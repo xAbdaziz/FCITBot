@@ -242,7 +242,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 		helperLib.ReplyText("يا هلا، اذا عندك اقتراحات تواصل مع مطوري على التيليجرام\n@ِxAbdaziz")
 		return
 	} else if msgContent == cmdOpe+"القاعات" {
-		helperLib.ReplyText("رابط قاعات مواد الترم الثاني 2023:\nhttps://cutt.us/FCIT-202320")
+		helperLib.ReplyText("رابط قاعات مواد الترم الثالث 2023:\nhttps://cutt.us/FCIT202330")
 		return
 	} else if msgContent == cmdOpe+"الإجازة" {
 		helperLib.Vacation()
