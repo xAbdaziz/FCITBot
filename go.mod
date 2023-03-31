@@ -6,7 +6,7 @@ require (
 	github.com/jackc/pgx/v5 v5.3.0
 	github.com/joho/godotenv v1.5.1
 	github.com/mdp/qrterminal/v3 v3.0.0
-	go.mau.fi/whatsmeow v0.0.0-20230226124255-e5c8f3c95d78
+	go.mau.fi/whatsmeow v0.0.0-20230324171918-c7e156dca788
 	google.golang.org/protobuf v1.28.1
 )
 

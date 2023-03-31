@@ -28,8 +28,8 @@ github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.8.1 h1:w7B6lhMri9wdJUVmEZPGGhZzrYTPvgJArz7wNPgYKsk=
 go.mau.fi/libsignal v0.1.0 h1:vAKI/nJ5tMhdzke4cTK1fb0idJzz1JuEIpmjprueC+c=
 go.mau.fi/libsignal v0.1.0/go.mod h1:R8ovrTezxtUNzCQE5PH30StOQWWeBskBsWE55vMfY9I=
-go.mau.fi/whatsmeow v0.0.0-20230226124255-e5c8f3c95d78 h1:HXq3VXJhSL/S6kZkrCYMUhCELinVrfpPhDFpklZvHnA=
-go.mau.fi/whatsmeow v0.0.0-20230226124255-e5c8f3c95d78/go.mod h1:zoTtv1CupGEyTew7TOwnBmTbHB4pVad2OzjTf5CVwa0=
+go.mau.fi/whatsmeow v0.0.0-20230324171918-c7e156dca788 h1:k3fu1tJV5HDgW9pKLkbzYiFqI8lleDgZ5XbmLGZ07FU=
+go.mau.fi/whatsmeow v0.0.0-20230324171918-c7e156dca788/go.mod h1:zoTtv1CupGEyTew7TOwnBmTbHB4pVad2OzjTf5CVwa0=
 golang.org/x/crypto v0.6.0 h1:qfktjS5LUO+fFKeJXZ+ikTRijMmljikvG68fpMMruSc=
 golang.org/x/crypto v0.6.0/go.mod h1:OFC/31mSvZgRz0V1QTNCzfAI1aIRzbiufJtkMIlEp58=
 golang.org/x/sys v0.0.0-20190222072716-a9d3bda3a223/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
