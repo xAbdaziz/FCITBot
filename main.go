@@ -26,6 +26,7 @@ import (
 
 func registerHandler(client *whatsmeow.Client, groupNotes *sql.DB, misc *sql.DB) func(evt interface{}) {
 	botNum := os.Getenv("BOT_NUMBER")
+	myNum, _ := types.ParseJID(os.Getenv("OWNER_NUMBER"))
 	return func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Message:
@@ -37,6 +38,7 @@ func registerHandler(client *whatsmeow.Client, groupNotes *sql.DB, misc *sql.DB)
 				if BotIsAdded(v.Participants, botNum) {
 					_, _ = groupNotes.Exec(fmt.Sprintf("CREATE TABLE  %s (\"noteName\" TEXT NOT NULL PRIMARY KEY, \"noteContent\" TEXT NOT NULL , \"created_at\" TIMESTAMP NOT NULL DEFAULT NOW())", pgx.Identifier{v.JID.ToNonAD().String()}.Sanitize()))
 					_, _ = client.SendMessage(context.Background(), v.JID.ToNonAD(), &waProto.Message{Conversation: proto.String("شكرًا لإضافتي الى المجموعة.\nللحصول على قائمة الأوامر اكتب: !الاوامر")})
+					_, _ = client.SendMessage(context.Background(), myNum, &waProto.Message{Conversation: proto.String(v.GroupInfo.Name)})
 				}
 			}
 			break
