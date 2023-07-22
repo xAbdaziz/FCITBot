@@ -5,8 +5,8 @@ go 1.19
 require (
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
-	github.com/mdp/qrterminal/v3 v3.0.0
-	go.mau.fi/whatsmeow v0.0.0-20230505084412-9c004199cc79
+	github.com/mdp/qrterminal/v3 v3.1.1
+	go.mau.fi/whatsmeow v0.0.0-20230718190209-efef6f1cec8e
 	google.golang.org/protobuf v1.30.0
 )
 
