@@ -35,9 +35,10 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 
 	msgContent := helperLib.GetCMD()
 	msgContentSplit := strings.Split(msgContent, " ")
-	quotedMsg := message.Message.ExtendedTextMessage.GetContextInfo().GetQuotedMessage()
+	quotedMsgContext := message.Message.ExtendedTextMessage.GetContextInfo()
+	quotedMsg := quotedMsgContext.GetQuotedMessage()
 	quotedMsgText := quotedMsg.GetConversation()
-	quotedMsgAuthor := message.Message.ExtendedTextMessage.GetContextInfo().GetParticipant()
+	quotedMsgAuthor := quotedMsgContext.GetParticipant()
 	chat := message.Info.Chat.ToNonAD()
 	author := message.Info.Sender.ToNonAD().String()
 
@@ -79,6 +80,8 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 			userJID: whatsmeow.ParticipantChangeRemove,
 		}
 		_, _ = client.UpdateGroupParticipants(chat, userToKick)
+		revokeMessage := client.BuildRevoke(chat, userJID, quotedMsgContext.GetStanzaId())
+		_, _ = client.SendMessage(context.Background(), chat, revokeMessage)
 		helperLib.ReplyText("تم طرد " + strings.ReplaceAll(quotedMsgAuthor, "@s.whatsapp.net", ""))
 		return
 
