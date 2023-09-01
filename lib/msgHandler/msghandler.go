@@ -42,7 +42,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 	chat := message.Info.Chat.ToNonAD()
 	author := message.Info.Sender.ToNonAD().String()
 
-	if msgContent == cmdOpe+"الاوامر" {
+	if msgContent == cmdOpe+"الأوامر" {
 		helperLib.ReplyText(cmds)
 		return
 
@@ -227,7 +227,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 		helperLib.ReplyDocument(path)
 		return
 	} else if msgContent == cmdOpe+"درايف" {
-		helperLib.ReplyText("درايفات الكلية:\nhttps://drives.abdaziz.dev")
+		helperLib.ReplyText("Gone forever")
 		return
 	} else if msgContent == cmdOpe+"التقويم الأكاديمي" {
 		helperLib.ReplyDocument("./files/CALENDAR.pdf")
