@@ -75,12 +75,9 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 			helperLib.ReplyText("مقدر اطرد ادمن")
 			return
 		}
-		userJID, _ := types.ParseJID(quotedMsgAuthor)
-		userToKick := map[types.JID]whatsmeow.ParticipantChange{
-			userJID: whatsmeow.ParticipantChangeRemove,
-		}
-		_, _ = client.UpdateGroupParticipants(chat, userToKick)
-		revokeMessage := client.BuildRevoke(chat, userJID, quotedMsgContext.GetStanzaId())
+		usertoKick, _ := types.ParseJID(quotedMsgAuthor)
+		_, _ = client.UpdateGroupParticipants(chat, []types.JID{usertoKick}, whatsmeow.ParticipantChangeRemove)
+		revokeMessage := client.BuildRevoke(chat, usertoKick, quotedMsgContext.GetStanzaId())
 		_, _ = client.SendMessage(context.Background(), chat, revokeMessage)
 		helperLib.ReplyText("تم طرد " + strings.ReplaceAll(quotedMsgAuthor, "@s.whatsapp.net", ""))
 		return
