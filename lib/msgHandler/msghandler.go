@@ -92,7 +92,10 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 			return
 		}
 		noteName := msgContentSplit[1]
-		if quotedMsg.Conversation != nil {
+		if quotedMsg.Conversation != nil || quotedMsg.GetExtendedTextMessage().Text != nil {
+			if quotedMsg.GetExtendedTextMessage().Text != nil {
+				quotedMsgText = quotedMsg.GetExtendedTextMessage().GetText()
+			}
 			_, err := groupNotes.Exec(fmt.Sprintf("INSERT INTO %s (\"noteName\", \"noteContent\") VALUES ($1, $2) ON CONFLICT (\"noteName\") DO UPDATE SET \"noteContent\" = excluded.\"noteContent\";", pgx.Identifier{chat.String()}.Sanitize()), noteName, quotedMsgText)
 			if err != nil {
 				println(err)
