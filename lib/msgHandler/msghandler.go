@@ -260,5 +260,11 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 				_, _ = client.SendMessage(context.Background(), group.JID.ToNonAD(), &waProto.Message{Conversation: proto.String(quotedMsgText + string(i))})
 			}
 		}
+	} else if msgContent == cmdOpe+"الجدول" {
+		helperLib.ReplyText("https://betterkau.com")
+		return
+	} else if msgContent == cmdOpe+"القروبات" {
+		helperLib.ReplyText("https://fcit-groups.abdaziz.dev")
+		return
 	}
 }
