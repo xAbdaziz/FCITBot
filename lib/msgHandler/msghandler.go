@@ -92,9 +92,14 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 			return
 		}
 		noteName := msgContentSplit[1]
-		if quotedMsg.Conversation != nil || quotedMsg.GetExtendedTextMessage().Text != nil {
-			if quotedMsg.GetExtendedTextMessage().Text != nil {
-				quotedMsgText = quotedMsg.GetExtendedTextMessage().GetText()
+
+		// Check if quotedMsg is not nil and either Conversation or ExtendedTextMessage.Text is not nil
+		if quotedMsg != nil && (quotedMsg.Conversation != nil || (quotedMsg.GetExtendedTextMessage() != nil && quotedMsg.GetExtendedTextMessage().Text != nil)) {
+			// Extract the text from the quoted message
+			if extendedTextMsg := quotedMsg.GetExtendedTextMessage(); extendedTextMsg != nil && extendedTextMsg.Text != nil {
+				quotedMsgText = extendedTextMsg.GetText()
+			} else {
+				quotedMsgText = *quotedMsg.Conversation
 			}
 			_, err := groupNotes.Exec(fmt.Sprintf("INSERT INTO %s (\"noteName\", \"noteContent\") VALUES ($1, $2) ON CONFLICT (\"noteName\") DO UPDATE SET \"noteContent\" = excluded.\"noteContent\";", pgx.Identifier{chat.String()}.Sanitize()), noteName, quotedMsgText)
 			if err != nil {
@@ -107,7 +112,6 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 			helperLib.ReplyText("مقدر احفظ غير النصوص حالياً")
 			return
 		}
-
 	} else if msgContentSplit[0] == cmdOpe+"هات" {
 		if len(msgContentSplit) != 2 {
 			helperLib.ReplyText("استخدام خاطئ\nاكتب هات مع اسم الملاحظة بدون مسافة\n\nمثال: !هات اسم_الملاحظة ")
