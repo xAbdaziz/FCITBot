@@ -252,7 +252,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 		helperLib.ReplyText("رابط قاعات مواد الترم الأول 2024:\nhttps://cutt.us/Fcit202401")
 		return
 	} else if msgContent == cmdOpe+"الإجازة" {
-		helperLib.Vacation()
+		//helperLib.Vacation()
 	} else if msgContent == cmdOpe+"المكافأة" {
 		helperLib.Allowance()
 	} else if msgContent == cmdOpe+"المواد الاختيارية" {
