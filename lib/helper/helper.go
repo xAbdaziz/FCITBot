@@ -36,9 +36,6 @@ func (botContext *Bot) GetCMD() string {
 	text := botContext.Msg.Message.GetConversation()
 	imageMatch := botContext.Msg.Message.GetImageMessage().GetCaption()
 	videoMatch := botContext.Msg.Message.GetVideoMessage().GetCaption()
-	tempBtnId := botContext.Msg.Message.GetTemplateButtonReplyMessage().GetSelectedId()
-	btnId := botContext.Msg.Message.GetButtonsResponseMessage().GetSelectedButtonId()
-	listId := botContext.Msg.Message.GetListResponseMessage().GetSingleSelectReply().GetSelectedRowId()
 	var command string
 	if text != "" {
 		command = text
@@ -48,12 +45,6 @@ func (botContext *Bot) GetCMD() string {
 		command = videoMatch
 	} else if extended != "" {
 		command = extended
-	} else if tempBtnId != "" {
-		command = tempBtnId
-	} else if btnId != "" {
-		command = btnId
-	} else if listId != "" {
-		command = listId
 	}
 	return command
 }
@@ -77,7 +68,7 @@ func (botContext *Bot) ReplyText(reply string) {
 		ExtendedTextMessage: &waProto.ExtendedTextMessage{
 			Text: proto.String(reply),
 			ContextInfo: &waProto.ContextInfo{
-				StanzaId:      &msgId,
+				StanzaID:      &msgId,
 				Participant:   proto.String(author.String()),
 				QuotedMessage: botContext.Msg.Message,
 			},
@@ -92,10 +83,10 @@ func (botContext *Bot) ReplyAndMention(reply string, JIDs []string) {
 		ExtendedTextMessage: &waProto.ExtendedTextMessage{
 			Text: proto.String(reply),
 			ContextInfo: &waProto.ContextInfo{
-				StanzaId:      quotedMsg.StanzaId,
+				StanzaID:      quotedMsg.StanzaID,
 				Participant:   proto.String(*quotedMsg.Participant),
 				QuotedMessage: quotedMsg.QuotedMessage,
-				MentionedJid:  JIDs,
+				MentionedJID:  JIDs,
 			},
 		},
 	}
@@ -119,15 +110,15 @@ func (botContext *Bot) ReplyDocument(file string) {
 		DocumentMessage: &waProto.DocumentMessage{
 			FileName:      proto.String(filepath.Base(file)),
 			Mimetype:      proto.String(http.DetectContentType(content)), // replace this with the actual mime type
-			Url:           &resp.URL,
+			URL:           &resp.URL,
 			Title:         proto.String(filepath.Base(file)),
-			FileSha256:    resp.FileSHA256,
+			FileSHA256:    resp.FileSHA256,
 			FileLength:    &resp.FileLength,
 			MediaKey:      resp.MediaKey,
-			FileEncSha256: resp.FileEncSHA256,
+			FileEncSHA256: resp.FileEncSHA256,
 			DirectPath:    &resp.DirectPath,
 			ContextInfo: &waProto.ContextInfo{
-				StanzaId:      &msgId,
+				StanzaID:      &msgId,
 				Participant:   proto.String(author.String()),
 				QuotedMessage: botContext.Msg.Message,
 			},
