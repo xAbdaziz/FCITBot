@@ -10,6 +10,7 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 	"google.golang.org/protobuf/proto"
 	"math"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -188,6 +189,10 @@ func diffBetweenDates(date string) (counter string) {
 		minutesName := "دقيقة"
 		secondsName := "ثانية"
 
+		if days < 1 {
+			return "no allowance"
+		}
+
 		if days <= 10 {
 			daysName = "أيام"
 		}
@@ -246,6 +251,12 @@ func (botContext *Bot) Allowance() {
 	}
 	date = fmt.Sprintf("%d-%02d-%dT02:00:00.000+03:00", year, month, day)
 	diff := diffBetweenDates(date)
+	if diff == "no allowance" {
+		replies := [7]string{"حرك يا فقير", "قطعناها عنك، روح دور لك على شغلة", "معدلك تعبان ما فيه فلوس", "شفلك حياة", "broke guy", "القم يا فقير", "Go work at McDonald's, broke guy"}
+		rand.Seed(time.Now().UnixNano())
+		reply := replies[rand.Intn(len(replies))]
+		botContext.ReplyText(reply)
+	}
 	if diff != "" {
 		botContext.ReplyText("يتبقى على إيداع المكافأة:\n" + diff)
 	} else {
