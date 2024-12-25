@@ -256,6 +256,7 @@ func (botContext *Bot) Allowance() {
 		rand.Seed(time.Now().UnixNano())
 		reply := replies[rand.Intn(len(replies))]
 		botContext.ReplyText(reply)
+		return
 	}
 	if diff != "" {
 		botContext.ReplyText("يتبقى على إيداع المكافأة:\n" + diff)
