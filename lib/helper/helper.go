@@ -252,7 +252,7 @@ func (botContext *Bot) Allowance() {
 	date = fmt.Sprintf("%d-%02d-%dT02:00:00.000+03:00", year, month, day)
 	diff := diffBetweenDates(date)
 	if diff == "no allowance" {
-		replies := [7]string{"حرك يا فقير", "قطعناها عنك، روح دور لك على شغلة", "معدلك تعبان ما فيه فلوس", "شفلك حياة", "broke guy", "القم يا فقير", "Go work at McDonald's, broke guy"}
+		replies := [14]string{"حرك يا فقير", "قطعناها عنك، روح دور لك على شغلة", "معدلك تعبان ما فيه فلوس", "شفلك حياة", "broke guy", "القم يا فقير", "Go work at McDonald's, broke guy", "If poverty gave out degrees, you’d have a PhD", "عطنا رقم بابا عشان نعطيك مصروف", "McDonald’s is hiring bro", "حمل إحسان وشوف قسم التبرعات", "غداً تُرزقون يا معشر المحتاجين", "اليوم تشحت، بكرة تصرف", "You’re 24 hours away from being slightly less pathetic"}
 		rand.Seed(time.Now().UnixNano())
 		reply := replies[rand.Intn(len(replies))]
 		botContext.ReplyText(reply)
