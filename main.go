@@ -17,7 +17,8 @@ import (
 
 	"github.com/mdp/qrterminal/v3"
 	"go.mau.fi/whatsmeow"
-	waProto "go.mau.fi/whatsmeow/binary/proto"
+	waCompanionReg "go.mau.fi/whatsmeow/proto/waCompanionReg"
+	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types/events"
@@ -37,8 +38,8 @@ func registerHandler(client *whatsmeow.Client, groupNotes *sql.DB, misc *sql.DB)
 			if len(v.Participants) > 1 {
 				if BotIsAdded(v.Participants, botNum) {
 					_, _ = groupNotes.Exec(fmt.Sprintf("CREATE TABLE  %s (\"noteName\" TEXT NOT NULL PRIMARY KEY, \"noteContent\" TEXT NOT NULL , \"created_at\" TIMESTAMP NOT NULL DEFAULT NOW())", pgx.Identifier{v.JID.ToNonAD().String()}.Sanitize()))
-					_, _ = client.SendMessage(context.Background(), v.JID.ToNonAD(), &waProto.Message{Conversation: proto.String("شكرًا لإضافتي الى المجموعة.\nللحصول على قائمة الأوامر اكتب: !الأوامر")})
-					_, _ = client.SendMessage(context.Background(), myNum, &waProto.Message{Conversation: proto.String(v.GroupInfo.Name)})
+					_, _ = client.SendMessage(context.Background(), v.JID.ToNonAD(), &waE2E.Message{Conversation: proto.String("شكرًا لإضافتي الى المجموعة.\nللحصول على قائمة الأوامر اكتب: !الأوامر")})
+					_, _ = client.SendMessage(context.Background(), myNum, &waE2E.Message{Conversation: proto.String(v.GroupInfo.Name)})
 				}
 			}
 			break
@@ -60,15 +61,15 @@ func main() {
 	_ = godotenv.Load("config.env")
 
 	// Spoof the bot as Windows
-	store.DeviceProps.Os = proto.String("Windows")
-	store.DeviceProps.PlatformType = waProto.DeviceProps_DESKTOP.Enum()
+	store.SetOSInfo("Windows", store.GetWAVersion())
+	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_DESKTOP.Enum()
 
 	dbLog := waLog.Stdout("Database", "ERROR", true)
-	container, err := sqlstore.New("pgx", os.Getenv("DB_URL")+"wadb", dbLog)
+	container, err := sqlstore.New(context.Background(), "pgx", os.Getenv("DB_URL")+"wadb", dbLog)
 	if err != nil {
 		panic(err)
 	}
-	deviceStore, err := container.GetFirstDevice()
+	deviceStore, err := container.GetFirstDevice(context.Background())
 	if err != nil {
 		panic(err)
 	}

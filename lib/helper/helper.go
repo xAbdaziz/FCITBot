@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"go.mau.fi/whatsmeow"
-	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	"google.golang.org/protobuf/proto"
@@ -50,7 +50,7 @@ func (botContext *Bot) GetCMD() string {
 	return command
 }
 
-func (botContext *Bot) Reply(msg *waProto.Message) {
+func (botContext *Bot) Reply(msg *waE2E.Message) {
 	chatId := botContext.Msg.Info.Chat.ToNonAD()
 	msgId := botContext.Msg.Info.ID
 	author := botContext.Msg.Info.Sender.ToNonAD()
@@ -65,10 +65,10 @@ func (botContext *Bot) Reply(msg *waProto.Message) {
 func (botContext *Bot) ReplyText(reply string) {
 	msgId := botContext.Msg.Info.ID
 	author := botContext.Msg.Info.Sender.ToNonAD()
-	msg := &waProto.Message{
-		ExtendedTextMessage: &waProto.ExtendedTextMessage{
+	msg := &waE2E.Message{
+		ExtendedTextMessage: &waE2E.ExtendedTextMessage{
 			Text: proto.String(reply),
-			ContextInfo: &waProto.ContextInfo{
+			ContextInfo: &waE2E.ContextInfo{
 				StanzaID:      &msgId,
 				Participant:   proto.String(author.String()),
 				QuotedMessage: botContext.Msg.Message,
@@ -80,10 +80,10 @@ func (botContext *Bot) ReplyText(reply string) {
 
 func (botContext *Bot) ReplyAndMention(reply string, JIDs []string) {
 	quotedMsg := botContext.Msg.Message.ExtendedTextMessage.ContextInfo
-	msg := &waProto.Message{
-		ExtendedTextMessage: &waProto.ExtendedTextMessage{
+	msg := &waE2E.Message{
+		ExtendedTextMessage: &waE2E.ExtendedTextMessage{
 			Text: proto.String(reply),
-			ContextInfo: &waProto.ContextInfo{
+			ContextInfo: &waE2E.ContextInfo{
 				StanzaID:      quotedMsg.StanzaID,
 				Participant:   proto.String(*quotedMsg.Participant),
 				QuotedMessage: quotedMsg.QuotedMessage,
@@ -107,8 +107,8 @@ func (botContext *Bot) ReplyDocument(file string) {
 		println(err)
 		return
 	}
-	msg := &waProto.Message{
-		DocumentMessage: &waProto.DocumentMessage{
+	msg := &waE2E.Message{
+		DocumentMessage: &waE2E.DocumentMessage{
 			FileName:      proto.String(filepath.Base(file)),
 			Mimetype:      proto.String(http.DetectContentType(content)), // replace this with the actual mime type
 			URL:           &resp.URL,
@@ -118,7 +118,7 @@ func (botContext *Bot) ReplyDocument(file string) {
 			MediaKey:      resp.MediaKey,
 			FileEncSHA256: resp.FileEncSHA256,
 			DirectPath:    &resp.DirectPath,
-			ContextInfo: &waProto.ContextInfo{
+			ContextInfo: &waE2E.ContextInfo{
 				StanzaID:      &msgId,
 				Participant:   proto.String(author.String()),
 				QuotedMessage: botContext.Msg.Message,

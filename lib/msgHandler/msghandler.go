@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"go.mau.fi/whatsmeow"
-	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	"google.golang.org/protobuf/proto"
@@ -261,7 +261,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 		if author == myNum {
 			groups, _ := client.GetJoinedGroups()
 			for i, group := range groups {
-				_, _ = client.SendMessage(context.Background(), group.JID.ToNonAD(), &waProto.Message{Conversation: proto.String(quotedMsgText + string(i))})
+				_, _ = client.SendMessage(context.Background(), group.JID.ToNonAD(), &waE2E.Message{Conversation: proto.String(quotedMsgText + string(i))})
 			}
 		}
 	} else if msgContent == cmdOpe+"الجدول" {
