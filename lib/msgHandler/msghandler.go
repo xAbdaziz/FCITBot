@@ -2,17 +2,19 @@ package msgHandler
 
 import (
 	"FCITBot/lib/helper"
+	"FCITBot/models"
+
 	"context"
-	"database/sql"
-	"fmt"
-	"github.com/jackc/pgx/v5"
+	"os"
+	"strings"
+
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	"google.golang.org/protobuf/proto"
-	"os"
-	"strings"
+
+	"gorm.io/gorm"
 )
 
 const cmdOpe = "!"
@@ -20,8 +22,8 @@ const cmdOpe = "!"
 var cmdsFile, _ = os.ReadFile("cmds.txt")
 var cmds = string(cmdsFile)
 
-func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.DB, misc *sql.DB) {
-	helperLib := helper.BotContext(client, message, misc)
+func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) {
+	helperLib := helper.BotContext(client, message, gormDB)
 	if message.Info.IsFromMe {
 		return
 	}
@@ -30,8 +32,13 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 		return
 	}
 
-	myNum := os.Getenv("OWNER_NUMBER")
-	botNum := os.Getenv("BOT_NUMBER")
+	ownerJID, _ := types.ParseJID(os.Getenv("OWNER_NUMBER"))
+	owner, err := client.Store.LIDs.GetLIDForPN(context.Background(), ownerJID)
+	if err != nil {
+		println("Error getting owner number, some commands might not work as expected", err)
+		return
+	}
+	botNum := client.Store.GetLID().ToNonAD().String()
 
 	msgContent := helperLib.GetCMD()
 	msgContentSplit := strings.Split(msgContent, " ")
@@ -63,7 +70,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 			helperLib.ReplyText("يواد قم بس، ما رح اطرد نفسي")
 			return
 		}
-		if quotedMsgAuthor == myNum {
+		if quotedMsgAuthor == owner.ToNonAD().String() {
 			helperLib.ReplyText("يواد قم بس، ما رح اطرد مطوري")
 			return
 		}
@@ -77,9 +84,9 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 		}
 		usertoKick, _ := types.ParseJID(quotedMsgAuthor)
 		_, _ = client.UpdateGroupParticipants(chat, []types.JID{usertoKick}, whatsmeow.ParticipantChangeRemove)
-		revokeMessage := client.BuildRevoke(chat, usertoKick, quotedMsgContext.GetStanzaId())
+		revokeMessage := client.BuildRevoke(chat, usertoKick, quotedMsgContext.GetStanzaID())
 		_, _ = client.SendMessage(context.Background(), chat, revokeMessage)
-		helperLib.ReplyText("تم طرد " + strings.ReplaceAll(quotedMsgAuthor, "@s.whatsapp.net", ""))
+		helperLib.ReplyText("تم طرد العضو من المجموعة")
 		return
 
 	} else if msgContentSplit[0] == cmdOpe+"احفظ" {
@@ -93,20 +100,24 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 		}
 		noteName := msgContentSplit[1]
 
-		// Check if quotedMsg is not nil and either Conversation or ExtendedTextMessage.Text is not nil
 		if quotedMsg != nil && (quotedMsg.Conversation != nil || (quotedMsg.GetExtendedTextMessage() != nil && quotedMsg.GetExtendedTextMessage().Text != nil)) {
-			// Extract the text from the quoted message
 			if extendedTextMsg := quotedMsg.GetExtendedTextMessage(); extendedTextMsg != nil && extendedTextMsg.Text != nil {
 				quotedMsgText = extendedTextMsg.GetText()
 			} else {
 				quotedMsgText = *quotedMsg.Conversation
 			}
-			_, err := groupNotes.Exec(fmt.Sprintf("INSERT INTO %s (\"noteName\", \"noteContent\") VALUES ($1, $2) ON CONFLICT (\"noteName\") DO UPDATE SET \"noteContent\" = excluded.\"noteContent\";", pgx.Identifier{chat.String()}.Sanitize()), noteName, quotedMsgText)
-			if err != nil {
-				println(err)
-				return
+			// GORM: Upsert note
+			note := models.GroupsNotes{GroupID: chat.String(), NoteName: noteName}
+			var existing models.GroupsNotes
+			err := gormDB.Where("group_id = ? AND note_name = ?", chat.String(), noteName).First(&existing).Error
+			if err == nil {
+				existing.NoteContent = quotedMsgText
+				gormDB.Save(&existing)
+			} else {
+				note.NoteContent = quotedMsgText
+				gormDB.Create(&note)
 			}
-			helperLib.ReplyText("تم حفظ الملاحظة " + "\"" + noteName + "\"")
+			helperLib.ReplyText("تم حفظ الملاحظة \"" + noteName + "\"")
 			return
 		} else {
 			helperLib.ReplyText("مقدر احفظ غير النصوص حالياً")
@@ -118,17 +129,14 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 			return
 		}
 		noteName := msgContentSplit[1]
-		var noteExists bool
-		_ = groupNotes.QueryRow(fmt.Sprintf("SELECT EXISTS(SELECT * FROM %s WHERE \"noteName\"=$1);", pgx.Identifier{chat.String()}.Sanitize()), noteName).Scan(&noteExists)
-		if !noteExists {
+		var note models.GroupsNotes
+		err := gormDB.Where("group_id = ? AND note_name = ?", chat.String(), noteName).First(&note).Error
+		if err != nil {
 			helperLib.ReplyText("لا توجد ملاحظة بأسم " + "\"" + noteName + "\"")
 			return
 		}
-		var noteContent string
-		_ = groupNotes.QueryRow(fmt.Sprintf("SELECT \"noteContent\" FROM %s WHERE \"noteName\"=$1;", pgx.Identifier{chat.String()}.Sanitize()), noteName).Scan(&noteContent)
-		helperLib.ReplyText(noteContent)
+		helperLib.ReplyText(note.NoteContent)
 		return
-
 	} else if msgContentSplit[0] == cmdOpe+"احذف" {
 		if !helperLib.IsUserAdmin(chat, author) {
 			helperLib.ReplyText("حرك حرك تراك مو ادمن")
@@ -139,30 +147,27 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 			return
 		}
 		noteName := msgContentSplit[1]
-		var noteExists bool
-		_ = groupNotes.QueryRow(fmt.Sprintf("SELECT EXISTS(SELECT * FROM %s where \"noteName\"=$1);", pgx.Identifier{chat.String()}.Sanitize()), noteName).Scan(&noteExists)
-		if !noteExists {
+		var note models.GroupsNotes
+		err := gormDB.Where("group_id = ? AND note_name = ?", chat.String(), noteName).First(&note).Error
+		if err != nil {
 			helperLib.ReplyText("لا توجد ملاحظة بأسم " + "\"" + noteName + "\"")
 			return
 		}
-		_, _ = groupNotes.Exec(fmt.Sprintf("DELETE FROM %s where \"noteName\"=$1", pgx.Identifier{chat.String()}.Sanitize()), noteName)
+		gormDB.Delete(&note)
 		helperLib.ReplyText("تم حذف الملاحظة " + "\"" + noteName + "\"")
 		return
 	} else if msgContent == cmdOpe+"الملاحظات" {
-		var notesExists bool
-		_ = groupNotes.QueryRow(fmt.Sprintf("SELECT EXISTS(SELECT * FROM %s);", pgx.Identifier{chat.String()}.Sanitize())).Scan(&notesExists)
-		if notesExists != true {
+		var notes []models.GroupsNotes
+		gormDB.Where("group_id = ?", chat.String()).Find(&notes)
+		if len(notes) == 0 {
 			helperLib.ReplyText("لا توجد ملاحظات محفوظة.")
 			return
 		}
-		notes := "الملاحظات المحفوظة:"
-		listOfNotes, _ := groupNotes.Query(fmt.Sprintf("SELECT \"noteName\" from %s;", pgx.Identifier{chat.String()}.Sanitize()))
-		for listOfNotes.Next() {
-			var NoteName string
-			_ = listOfNotes.Scan(&NoteName)
-			notes += "\n- " + NoteName
+		notesList := "الملاحظات المحفوظة:"
+		for _, n := range notes {
+			notesList += "\n- " + n.NoteName
 		}
-		helperLib.ReplyText(notes)
+		helperLib.ReplyText(notesList)
 		return
 
 	} else if msgContent == cmdOpe+"تبليغ" {
@@ -174,8 +179,8 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 		var adminsJID []string
 		admins := helperLib.GetGroupAdmins(chat)
 		for _, admin := range admins {
-			if admin.JID.String() != botNum {
-				adminsNum += "@" + strings.ReplaceAll(admin.JID.ToNonAD().String(), "@s.whatsapp.net", "") + "\n"
+			if admin.PhoneNumber.String() != botNum {
+				adminsNum += "@" + strings.ReplaceAll(admin.JID.ToNonAD().String(), "@lid", "") + "\n"
 				adminsJID = append(adminsJID, admin.JID.ToNonAD().String())
 			}
 		}
@@ -197,8 +202,8 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 		var usersJID []string
 		users := helperLib.GetGroupMembers(chat)
 		for _, user := range users {
-			if user.JID.String() != botNum {
-				text += "@" + strings.ReplaceAll(user.JID.ToNonAD().String(), "@s.whatsapp.net", "") + "\n"
+			if user.PhoneNumber.String() != botNum {
+				text += "@" + strings.ReplaceAll(user.JID.ToNonAD().String(), "@lid", "") + "\n"
 				usersJID = append(usersJID, user.JID.ToNonAD().String())
 			}
 		}
@@ -258,7 +263,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, groupNotes *sql.D
 	} else if msgContent == cmdOpe+"المواد الاختيارية" {
 		helperLib.ReplyDocument("./files/ELECTIVE_COURSES.pdf")
 	} else if msgContent == cmdOpe+"broadcast" {
-		if author == myNum {
+		if author == owner.ToNonAD().String() {
 			groups, _ := client.GetJoinedGroups()
 			for i, group := range groups {
 				_, _ = client.SendMessage(context.Background(), group.JID.ToNonAD(), &waE2E.Message{Conversation: proto.String(quotedMsgText + string(i))})

@@ -1,14 +1,10 @@
 package helper
 
 import (
+	"FCITBot/models"
+
 	"context"
-	"database/sql"
 	"fmt"
-	"go.mau.fi/whatsmeow"
-	"go.mau.fi/whatsmeow/proto/waE2E"
-	"go.mau.fi/whatsmeow/types"
-	"go.mau.fi/whatsmeow/types/events"
-	"google.golang.org/protobuf/proto"
 	"math"
 	"math/rand"
 	"net/http"
@@ -16,19 +12,27 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/proto/waE2E"
+	"go.mau.fi/whatsmeow/types"
+	"go.mau.fi/whatsmeow/types/events"
+	"google.golang.org/protobuf/proto"
+
+	"gorm.io/gorm"
 )
 
 type Bot struct {
 	Client *whatsmeow.Client
 	Msg    *events.Message
-	Misc   *sql.DB
+	gormDB *gorm.DB
 }
 
-func BotContext(client *whatsmeow.Client, message *events.Message, misc *sql.DB) *Bot {
+func BotContext(client *whatsmeow.Client, message *events.Message, gormDB *gorm.DB) *Bot {
 	return &Bot{
 		Client: client,
 		Msg:    message,
-		Misc:   misc,
+		gormDB: gormDB,
 	}
 }
 
@@ -147,9 +151,10 @@ func (botContext *Bot) GetGroupAdmins(chat types.JID) []types.GroupParticipant {
 
 func (botContext *Bot) IsUserAdmin(chat types.JID, user string) bool {
 	admins := botContext.GetGroupAdmins(chat)
-	myNum := os.Getenv("OWNER_NUMBER")
+	ownerJID, _ := types.ParseJID(os.Getenv("OWNER_NUMBER"))
+	owner, _ := botContext.Client.Store.LIDs.GetLIDForPN(context.Background(), ownerJID)
 	for _, admin := range admins {
-		if admin.JID.String() == user || myNum == user {
+		if admin.JID.String() == user || owner.String() == user {
 			return true
 		}
 	}
@@ -214,60 +219,66 @@ func diffBetweenDates(date string) (counter string) {
 	}
 }
 
-func (botContext *Bot) Vacation() {
-	var name string
-	var date string
-	var duration string
-	var createdAt string
-	err := botContext.Misc.QueryRow("SELECT * from vacations ORDER BY created_at ASC").Scan(&name, &date, &duration, &createdAt)
-	if err != nil {
-		panic(err)
-		return
-	}
-	diff := diffBetweenDates(date)
-	if diff != "" {
-		botContext.ReplyText("اقرب إجازة هي: إجازة " + name + "\n" + "تبدأ بعد: " + diff + "\n" + "مدتها: " + duration)
-	} else {
-		_, err := botContext.Misc.Exec("DELETE FROM vacations WHERE date=$1", date)
-		if err != nil {
-			panic(err)
-			return
-		}
-		botContext.Vacation()
-	}
-}
-
 func (botContext *Bot) Allowance() {
-	day := 27
-	var month int
-	var year int
-	_ = botContext.Misc.QueryRow("SELECT * from allowance").Scan(&month, &year)
-	date := fmt.Sprintf("%d-%02d-%dT02:00:00.000+03:00", year, month, day)
-	dateDay, _ := time.Parse(time.RFC3339, date)
-	if dateDay.Weekday() == 6 {
-		day++
-	} else if dateDay.Weekday() == 5 {
-		day--
+	var allowance models.Allowance
+	result := botContext.gormDB.First(&allowance)
+
+	if result.Error != nil {
+		now := time.Now()
+		allowanceDate := time.Date(now.Year(), now.Month(), 27, 2, 0, 0, 0, time.FixedZone("UTC+3", 3*60*60))
+		allowance = models.Allowance{Date: allowanceDate}
+		botContext.gormDB.Create(&allowance)
 	}
-	date = fmt.Sprintf("%d-%02d-%dT02:00:00.000+03:00", year, month, day)
-	diff := diffBetweenDates(date)
+
+	if allowance.Date.Weekday() == time.Saturday {
+		// Move to Sunday
+		allowance.Date = allowance.Date.AddDate(0, 0, 1)
+	} else if allowance.Date.Weekday() == time.Friday {
+		// Move to Thursday
+		allowance.Date = allowance.Date.AddDate(0, 0, -1)
+	}
+
+	diff := diffBetweenDates(allowance.Date.Format(time.RFC3339))
+
 	if diff == "no allowance" {
-		replies := [17]string{"حرك يا فقير", "قطعناها عنك، روح دور لك على شغلة", "معدلك تعبان ما فيه فلوس", "شفلك حياة", "broke guy", "القم يا فقير", "Go work at McDonald's, broke guy", "If poverty gave out degrees, you’d have a PhD", "عطنا رقم بابا عشان نعطيك مصروف", "McDonald’s is hiring bro", "حمل إحسان وشوف قسم التبرعات", "غداً تُرزقون يا معشر المحتاجين", "اليوم تشحت، بكرة تصرف", "You’re 24 hours away from being slightly less pathetic", "Put the fries in the bag lil bro", "شكله خلص حبر الطابعة وما عندك حقه", "Bro so broke he can't afford calculator batteries 💀💀"}
+		replies := []string{
+			"حرك يا فقير",
+			"قطعناها عنك، روح دور لك على شغلة",
+			"معدلك تعبان ما فيه فلوس",
+			"شفلك حياة",
+			"broke guy",
+			"القم يا فقير",
+			"Go work at McDonald's, broke guy",
+			"If poverty gave out degrees, you'd have a PhD",
+			"عطنا رقم بابا عشان نعطيك مصروف",
+			"McDonald's is hiring bro",
+			"حمل إحسان وشوف قسم التبرعات",
+			"غداً تُرزقون يا معشر المحتاجين",
+			"اليوم تشحت، بكرة تصرف",
+			"You're 24 hours away from being slightly less pathetic",
+			"Put the fries in the bag lil bro",
+			"شكله خلص حبر الطابعة وما عندك حقه",
+			"Bro so broke he can't afford calculator batteries 💀💀",
+		}
 		rand.Seed(time.Now().UnixNano())
 		reply := replies[rand.Intn(len(replies))]
 		botContext.ReplyText(reply)
 		return
 	}
+
 	if diff != "" {
 		botContext.ReplyText("يتبقى على إيداع المكافأة:\n" + diff)
 	} else {
-		if month == 12 {
-			month = 1
-			year++
-		} else {
-			month++
-		}
-		botContext.Misc.QueryRow("UPDATE allowance SET year=$1, month=$2;", year, month)
+		// Update to next month
+		// Add one month to the current date
+		nextMonth := allowance.Date.AddDate(0, 1, 0)
+		// Reset to day 27 of next month
+		nextAllowanceDate := time.Date(nextMonth.Year(), nextMonth.Month(), 27, 2, 0, 0, 0, time.FixedZone("UTC+3", 3*60*60))
+
+		botContext.gormDB.Model(&models.Allowance{}).Where("1=1").Update("date", nextAllowanceDate)
+
+		// Recursive call to show the next allowance date
+		allowance.Date = nextAllowanceDate
 		botContext.Allowance()
 	}
 }

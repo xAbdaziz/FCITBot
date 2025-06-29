@@ -2,44 +2,46 @@ package main
 
 import (
 	"FCITBot/lib/msgHandler"
-	"database/sql"
-	"github.com/jackc/pgx/v5"
-	"github.com/joho/godotenv"
-	"go.mau.fi/whatsmeow/types"
+	"FCITBot/models"
+
+	_ "github.com/mattn/go-sqlite3"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 
 	"context"
 	"fmt"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"google.golang.org/protobuf/proto"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/joho/godotenv"
 	"github.com/mdp/qrterminal/v3"
+	"google.golang.org/protobuf/proto"
+
 	"go.mau.fi/whatsmeow"
 	waCompanionReg "go.mau.fi/whatsmeow/proto/waCompanionReg"
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
+	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
-func registerHandler(client *whatsmeow.Client, groupNotes *sql.DB, misc *sql.DB) func(evt interface{}) {
+func registerHandler(client *whatsmeow.Client, gormDB *gorm.DB) func(evt interface{}) {
 	botNum := os.Getenv("BOT_NUMBER")
 	myNum, _ := types.ParseJID(os.Getenv("OWNER_NUMBER"))
 	return func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Message:
-			go msgHandler.Handle(v, client, groupNotes, misc)
+			go msgHandler.Handle(v, client, gormDB)
 			break
 
 		case *events.JoinedGroup:
 			if len(v.Participants) > 1 {
 				if BotIsAdded(v.Participants, botNum) {
-					_, _ = groupNotes.Exec(fmt.Sprintf("CREATE TABLE  %s (\"noteName\" TEXT NOT NULL PRIMARY KEY, \"noteContent\" TEXT NOT NULL , \"created_at\" TIMESTAMP NOT NULL DEFAULT NOW())", pgx.Identifier{v.JID.ToNonAD().String()}.Sanitize()))
-					_, _ = client.SendMessage(context.Background(), v.JID.ToNonAD(), &waE2E.Message{Conversation: proto.String("شكرًا لإضافتي الى المجموعة.\nللحصول على قائمة الأوامر اكتب: !الأوامر")})
-					_, _ = client.SendMessage(context.Background(), myNum, &waE2E.Message{Conversation: proto.String(v.GroupInfo.Name)})
+					client.SendMessage(context.Background(), v.JID.ToNonAD(), &waE2E.Message{Conversation: proto.String("شكرًا لإضافتي الى المجموعة.\nللحصول على قائمة الأوامر اكتب: !الأوامر")})
+					client.SendMessage(context.Background(), myNum, &waE2E.Message{Conversation: proto.String(v.GroupInfo.Name)})
 				}
 			}
 			break
@@ -47,7 +49,7 @@ func registerHandler(client *whatsmeow.Client, groupNotes *sql.DB, misc *sql.DB)
 		case *events.GroupInfo:
 			if len(v.Leave) == 1 {
 				if v.Leave[0].ToNonAD().String() == botNum {
-					_, _ = groupNotes.Exec(fmt.Sprintf("DROP TABLE %s", pgx.Identifier{v.JID.ToNonAD().String()}.Sanitize()))
+					gormDB.Delete(&models.GroupsNotes{}, "group_id = ?", v.JID.ToNonAD().String())
 					return
 				}
 			}
@@ -65,22 +67,28 @@ func main() {
 	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_DESKTOP.Enum()
 
 	dbLog := waLog.Stdout("Database", "ERROR", true)
-	container, err := sqlstore.New(context.Background(), "pgx", os.Getenv("DB_URL")+"wadb", dbLog)
+	ctx := context.Background()
+	container, err := sqlstore.New(ctx, "sqlite3", "file:whatsmeow.db?_foreign_keys=on", dbLog)
 	if err != nil {
 		panic(err)
 	}
-	deviceStore, err := container.GetFirstDevice(context.Background())
+	deviceStore, err := container.GetFirstDevice(ctx)
 	if err != nil {
 		panic(err)
 	}
 	clientLog := waLog.Stdout("Client", "ERROR", true)
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 
-	// PostgreSQL stuff
-	groupNotes, _ := sql.Open("pgx", os.Getenv("DB_URL")+"groupnotes")
-	misc, _ := sql.Open("pgx", os.Getenv("DB_URL")+"fcitbotmisc")
+	// GORM
+	gormDB, err := gorm.Open(sqlite.Open("file:fcitbot.db?_foreign_keys=on&journal_mode=WAL"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
 
-	eventHandler := registerHandler(client, groupNotes, misc)
+	// Migrate models
+	gormDB.AutoMigrate(&models.GroupsNotes{}, &models.Allowance{})
+
+	eventHandler := registerHandler(client, gormDB)
 	client.AddEventHandler(eventHandler)
 
 	if client.Store.ID == nil {
@@ -107,16 +115,18 @@ func main() {
 	}
 
 	// Listen to Ctrl+C (you can also do something else that prevents the program from exiting)
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 
 	client.Disconnect()
+	db, _ := gormDB.DB()
+	db.Close()
 }
 
 func BotIsAdded(participants []types.GroupParticipant, botNum string) bool {
 	for _, participant := range participants {
-		if participant.JID.ToNonAD().String() == botNum {
+		if participant.PhoneNumber.ToNonAD().String() == botNum {
 			return true
 		}
 	}
