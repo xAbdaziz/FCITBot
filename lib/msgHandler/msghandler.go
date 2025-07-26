@@ -17,8 +17,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const cmdOpe = "!"
-
 var cmdsFile, _ = os.ReadFile("cmds.txt")
 var cmds = string(cmdsFile)
 
@@ -49,11 +47,15 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 	chat := message.Info.Chat.ToNonAD()
 	author := message.Info.Sender.ToNonAD().String()
 
-	if msgContent == cmdOpe+"الأوامر" {
+	const cmdOpe = "!"
+	command := msgContentSplit[0]
+
+	switch command {
+	case cmdOpe + "الأوامر":
 		helperLib.ReplyText(cmds)
 		return
 
-	} else if msgContentSplit[0] == cmdOpe+"اطرد" {
+	case cmdOpe + "اطرد":
 		if !helperLib.IsUserAdmin(chat, author) {
 			helperLib.ReplyText("حرك حرك تراك مو ادمن")
 			return
@@ -89,7 +91,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 		helperLib.ReplyText("تم طرد العضو من المجموعة")
 		return
 
-	} else if msgContentSplit[0] == cmdOpe+"احفظ" {
+	case cmdOpe + "احفظ":
 		if !helperLib.IsUserAdmin(chat, author) {
 			helperLib.ReplyText("حرك حرك تراك مو ادمن")
 			return
@@ -123,7 +125,8 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 			helperLib.ReplyText("مقدر احفظ غير النصوص حالياً")
 			return
 		}
-	} else if msgContentSplit[0] == cmdOpe+"هات" {
+
+	case cmdOpe + "هات":
 		if len(msgContentSplit) != 2 {
 			helperLib.ReplyText("استخدام خاطئ\nاكتب هات مع اسم الملاحظة بدون مسافة\n\nمثال: !هات اسم_الملاحظة ")
 			return
@@ -137,7 +140,8 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 		}
 		helperLib.ReplyText(note.NoteContent)
 		return
-	} else if msgContentSplit[0] == cmdOpe+"احذف" {
+
+	case cmdOpe + "احذف":
 		if !helperLib.IsUserAdmin(chat, author) {
 			helperLib.ReplyText("حرك حرك تراك مو ادمن")
 			return
@@ -156,7 +160,8 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 		gormDB.Delete(&note)
 		helperLib.ReplyText("تم حذف الملاحظة " + "\"" + noteName + "\"")
 		return
-	} else if msgContent == cmdOpe+"الملاحظات" {
+
+	case cmdOpe + "الملاحظات":
 		var notes []models.GroupsNotes
 		gormDB.Where("group_id = ?", chat.String()).Find(&notes)
 		if len(notes) == 0 {
@@ -170,7 +175,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 		helperLib.ReplyText(notesList)
 		return
 
-	} else if msgContent == cmdOpe+"تبليغ" {
+	case cmdOpe + "تبليغ":
 		if quotedMsg == nil {
 			helperLib.ReplyText("الرجاء استخدام الأمر على الرسالة المراد التبليغ عنها")
 			return
@@ -188,7 +193,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 		helperLib.ReplyText("تم الإبلاغ عن الرسالة")
 		return
 
-	} else if msgContent == cmdOpe+"منشن الكل" {
+	case cmdOpe + "منشن الكل":
 		if !helperLib.IsUserAdmin(chat, author) {
 			helperLib.ReplyText("حرك حرك تراك مو ادمن")
 			return
@@ -211,7 +216,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 		helperLib.ReplyAndMention(text, usersJID)
 		return
 
-	} else if msgContentSplit[0] == cmdOpe+"خطة" {
+	case cmdOpe + "خطة":
 		if len(msgContentSplit) != 2 {
 			helperLib.ReplyText("استخدام خاطئ\nاكتب خطة مع اسم التخصص\n\nمثال: !خطة IS ")
 			return
@@ -235,44 +240,57 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 		}
 		helperLib.ReplyDocument(path)
 		return
-	} else if msgContent == cmdOpe+"درايف" {
+
+	case cmdOpe + "درايف":
 		helperLib.ReplyText("Gone forever")
 		return
-	} else if msgContent == cmdOpe+"التقويم الأكاديمي" {
+
+	case cmdOpe + "التقويم الأكاديمي":
 		helperLib.ReplyDocument("./files/CALENDAR.pdf")
 		return
-	} else if msgContent == cmdOpe+"شروط التحويل" {
+
+	case cmdOpe + "شروط التحويل":
 		helperLib.ReplyDocument("./files/TRANSFERRING_CONDITIONS.pdf")
 		return
-	} else if msgContent == cmdOpe+"الفرق بين التخصصات" {
+
+	case cmdOpe + "الفرق بين التخصصات":
 		helperLib.ReplyDocument("./files/DIFFERENCE_BETWEEN_MAJORS.pdf")
 		return
-	} else if msgContent == cmdOpe+"المسارات" {
+
+	case cmdOpe + "المسارات":
 		helperLib.ReplyDocument("./files/FCIT_TRACKS.pdf")
 		return
-	} else if msgContent == cmdOpe+"اقتراحات" {
+
+	case cmdOpe + "اقتراحات":
 		helperLib.ReplyText("يا هلا، اذا عندك اقتراحات تواصل مع مطوري على التيليجرام\n@ِxAbdaziz")
 		return
-	} else if msgContent == cmdOpe+"القاعات" {
+
+	case cmdOpe + "القاعات":
 		helperLib.ReplyText("رابط قاعات مواد الترم الأول 2024:\nhttps://cutt.us/Fcit202401")
 		return
-	} else if msgContent == cmdOpe+"الإجازة" {
+
+	case cmdOpe + "الإجازة":
 		//helperLib.Vacation()
-	} else if msgContent == cmdOpe+"المكافأة" {
+
+	case cmdOpe + "المكافأة":
 		helperLib.Allowance()
-	} else if msgContent == cmdOpe+"المواد الاختيارية" {
+
+	case cmdOpe + "المواد الاختيارية":
 		helperLib.ReplyDocument("./files/ELECTIVE_COURSES.pdf")
-	} else if msgContent == cmdOpe+"broadcast" {
+
+	case cmdOpe + "broadcast":
 		if author == owner.ToNonAD().String() {
 			groups, _ := client.GetJoinedGroups()
 			for i, group := range groups {
 				_, _ = client.SendMessage(context.Background(), group.JID.ToNonAD(), &waE2E.Message{Conversation: proto.String(quotedMsgText + string(i))})
 			}
 		}
-	} else if msgContent == cmdOpe+"الجدول" {
+
+	case cmdOpe + "الجدول":
 		helperLib.ReplyText("https://betterkau.com")
 		return
-	} else if msgContent == cmdOpe+"القروبات" {
+
+	case cmdOpe + "القروبات":
 		helperLib.ReplyText("https://fcit-groups.abdaziz.dev")
 		return
 	}
