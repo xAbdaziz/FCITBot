@@ -241,10 +241,6 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 		helperLib.ReplyDocument(path)
 		return
 
-	case cmdOpe + "درايف":
-		helperLib.ReplyText("Gone forever")
-		return
-
 	case cmdOpe + "التقويم الأكاديمي":
 		helperLib.ReplyDocument("./files/CALENDAR.pdf")
 		return
@@ -261,22 +257,13 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 		helperLib.ReplyDocument("./files/FCIT_TRACKS.pdf")
 		return
 
-	case cmdOpe + "اقتراحات":
-		helperLib.ReplyText("يا هلا، اذا عندك اقتراحات تواصل مع مطوري على التيليجرام\n@ِxAbdaziz")
-		return
-
-	case cmdOpe + "القاعات":
-		helperLib.ReplyText("رابط قاعات مواد الترم الأول 2024:\nhttps://cutt.us/Fcit202401")
-		return
-
-	case cmdOpe + "الإجازة":
-		//helperLib.Vacation()
-
 	case cmdOpe + "المكافأة":
 		helperLib.Allowance()
+		return
 
 	case cmdOpe + "المواد الاختيارية":
 		helperLib.ReplyDocument("./files/ELECTIVE_COURSES.pdf")
+		return
 
 	case cmdOpe + "broadcast":
 		if author == owner.ToNonAD().String() {
@@ -288,10 +275,6 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 
 	case cmdOpe + "الجدول":
 		helperLib.ReplyText("https://betterkau.com")
-		return
-
-	case cmdOpe + "القروبات":
-		helperLib.ReplyText("https://fcit-groups.abdaziz.dev")
 		return
 	}
 }

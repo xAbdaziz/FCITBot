@@ -3,13 +3,16 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /build
 
+# Install dependencies
+RUN apk add build-base
+
 # Copy and download dependencies first (better caching)
 COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy source code and build
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o fcitbot main.go
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o fcitbot main.go
 
 # Runtime stage
 FROM alpine:3.19
