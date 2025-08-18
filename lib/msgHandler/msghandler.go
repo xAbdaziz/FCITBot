@@ -272,6 +272,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 				_, _ = client.SendMessage(context.Background(), group.JID.ToNonAD(), &waE2E.Message{Conversation: proto.String(quotedMsgText + string(i))})
 			}
 		}
+		return
 
 	case cmdOpe + "الجدول":
 		helperLib.ReplyText("https://betterkau.com")
