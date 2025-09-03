@@ -68,7 +68,7 @@ func main() {
 
 	dbLog := waLog.Stdout("Database", "ERROR", true)
 	ctx := context.Background()
-	container, err := sqlstore.New(ctx, "sqlite3", "file:whatsmeow.db?_foreign_keys=on", dbLog)
+	container, err := sqlstore.New(ctx, "sqlite3", "file:data/whatsmeow.db?_foreign_keys=on", dbLog)
 	if err != nil {
 		panic(err)
 	}
@@ -80,7 +80,7 @@ func main() {
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 
 	// GORM
-	gormDB, err := gorm.Open(sqlite.Open("file:fcitbot.db?_foreign_keys=on&journal_mode=WAL"), &gorm.Config{})
+	gormDB, err := gorm.Open(sqlite.Open("file:data/fcitbot.db?_foreign_keys=on&journal_mode=WAL"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}

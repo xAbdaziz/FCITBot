@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  fcitbot:
+    image: ghcr.io/xAbdaziz/fcitbot:latest
+    container_name: fcitbot
+    restart: unless-stopped
+    volumes:
+      - ./fcitbot-data:/app/data
+      - ./config.env:/app/config.env:ro
+    environment:
+      - TZ=Asia/Riyadh
+    # Uncomment if you need to see QR code on first run
+    # tty: true
+    # stdin_open: true

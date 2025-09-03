@@ -25,12 +25,15 @@ WORKDIR /app
 COPY --from=builder /build/fcitbot .
 
 # Copy any necessary files
-COPY config.env /app/config.env
 COPY cmds.txt /app/cmds.txt
 COPY files/ /app/files/
 
-# Create non-root user
-RUN adduser -D appuser
+# Create data directory for database persistence
+RUN mkdir -p /app/data
+
+# Create non-root user and set permissions
+RUN adduser -D appuser && \
+    chown -R appuser:appuser /app/data
 USER appuser
 
 # Command to run
