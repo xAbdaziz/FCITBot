@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine3.22 AS builder
 
 WORKDIR /build
 
@@ -15,7 +15,7 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o fcitbot main.go
 
 # Runtime stage
-FROM alpine:3.19
+FROM alpine:3.22
 
 RUN apk --no-cache add ca-certificates tzdata
 
