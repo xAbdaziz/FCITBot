@@ -41,6 +41,7 @@ var commandMap = map[string]cmdHandler{
 	"!المواد الاختيارية":  handleElectiveCourses,
 	"!broadcast":          handleBroadcast,
 	"!الجدول":             handleSchedule,
+	"!القروبات":          handleGroups,
 }
 
 func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) {
@@ -308,4 +309,8 @@ func handleBroadcast(message *events.Message, client *whatsmeow.Client, gormDB *
 
 func handleSchedule(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
 	helperLib.ReplyText("https://betterkau.com")
+}
+
+func handleGroups(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
+	helperLib.ReplyText("https://fcit-groups.abdaziz.dev")
 }
