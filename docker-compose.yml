@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   fcitbot:
-    image: ghcr.io/xAbdaziz/fcitbot:latest
+    image: ghcr.io/xabdaziz/fcitbot:latest
     container_name: fcitbot
     restart: unless-stopped
     volumes:
@@ -10,6 +10,9 @@ services:
       - ./config.env:/app/config.env:ro
     environment:
       - TZ=Asia/Riyadh
+      - OWNER_NUMBER=966591234567@s.whatsapp.net
+      # Optional: Uncomment to use PostgreSQL instead of SQLite
+      # - DB_URL=postgres://user:pass@host:5432/dbname
     # Uncomment if you need to see QR code on first run
     # tty: true
     # stdin_open: true

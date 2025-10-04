@@ -4,7 +4,9 @@ import (
 	"FCITBot/lib/msgHandler"
 	"FCITBot/models"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/mattn/go-sqlite3"
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
@@ -35,7 +37,6 @@ func registerHandler(client *whatsmeow.Client, gormDB *gorm.DB) func(evt interfa
 		switch v := evt.(type) {
 		case *events.Message:
 			go msgHandler.Handle(v, client, gormDB)
-			break
 
 		case *events.JoinedGroup:
 			if len(v.Participants) > 1 {
@@ -44,7 +45,6 @@ func registerHandler(client *whatsmeow.Client, gormDB *gorm.DB) func(evt interfa
 					client.SendMessage(context.Background(), myNum, &waE2E.Message{Conversation: proto.String(v.GroupInfo.Name)})
 				}
 			}
-			break
 
 		case *events.GroupInfo:
 			if len(v.Leave) == 1 {
@@ -53,7 +53,6 @@ func registerHandler(client *whatsmeow.Client, gormDB *gorm.DB) func(evt interfa
 					return
 				}
 			}
-			break
 		}
 	}
 }
@@ -68,22 +67,45 @@ func main() {
 
 	dbLog := waLog.Stdout("Database", "ERROR", true)
 	ctx := context.Background()
-	container, err := sqlstore.New(ctx, "sqlite3", "file:data/whatsmeow.db?_foreign_keys=on", dbLog)
-	if err != nil {
-		panic(err)
+
+	// Check if DB_URL is set for postgres, otherwise use sqlite
+	dbURL := os.Getenv("DB_URL")
+	var container *sqlstore.Container
+	var gormDB *gorm.DB
+	var err error
+
+	if dbURL != "" {
+		// Use Postgres with pgx driver
+		fmt.Println("Using PostgreSQL database")
+		container, err = sqlstore.New(ctx, "pgx", dbURL, dbLog)
+		if err != nil {
+			panic(err)
+		}
+
+		gormDB, err = gorm.Open(postgres.Open(dbURL), &gorm.Config{})
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		// Use SQLite
+		fmt.Println("Using SQLite database")
+		container, err = sqlstore.New(ctx, "sqlite3", "file:data/whatsmeow.db?_foreign_keys=on", dbLog)
+		if err != nil {
+			panic(err)
+		}
+
+		gormDB, err = gorm.Open(sqlite.Open("file:data/fcitbot.db?_foreign_keys=on&journal_mode=WAL"), &gorm.Config{})
+		if err != nil {
+			panic(err)
+		}
 	}
+
 	deviceStore, err := container.GetFirstDevice(ctx)
 	if err != nil {
 		panic(err)
 	}
 	clientLog := waLog.Stdout("Client", "ERROR", true)
 	client := whatsmeow.NewClient(deviceStore, clientLog)
-
-	// GORM
-	gormDB, err := gorm.Open(sqlite.Open("file:data/fcitbot.db?_foreign_keys=on&journal_mode=WAL"), &gorm.Config{})
-	if err != nil {
-		panic(err)
-	}
 
 	// Migrate models
 	gormDB.AutoMigrate(&models.GroupsNotes{}, &models.Allowance{})
