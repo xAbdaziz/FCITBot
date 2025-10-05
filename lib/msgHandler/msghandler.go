@@ -21,30 +21,47 @@ import (
 var cmdsFile, _ = os.ReadFile("cmds.txt")
 var cmds = string(cmdsFile)
 
-type cmdHandler func(*events.Message, *whatsmeow.Client, *gorm.DB, *helper.Bot, types.JID, string, string, *waE2E.Message, string, string, types.JID, []string)
+type MessageContext struct {
+	message         *events.Message
+	client          *whatsmeow.Client
+	gormDB          *gorm.DB
+	helperLib       *helper.Bot
+	chat            types.JID
+	author          string
+	botNum          string
+	quotedMsg       *waE2E.Message
+	quotedMsgText   string
+	quotedMsgAuthor string
+	owner           types.JID
+	msgContentSplit []string
+	ctx             context.Context
+}
+
+type cmdHandler func(*MessageContext)
 
 var commandMap = map[string]cmdHandler{
-	"!الأوامر":            handleCommands,
-	"!اطرد":               handleKick,
-	"!احفظ":               handleSaveNote,
-	"!هات":                handleGetNote,
-	"!احذف":               handleDeleteNote,
-	"!الملاحظات":          handleListNotes,
-	"!تبليغ":              handleReport,
-	"!منشن الكل":          handleMentionAll,
-	"!خطة":                handlePlan,
-	"!التقويم الأكاديمي":  handleCalendar,
-	"!شروط التحويل":       handleTransferConditions,
-	"!الفرق بين التخصصات": handleMajorDifferences,
-	"!المسارات":           handleTracks,
-	"!المكافأة":           handleAllowance,
-	"!المواد الاختيارية":  handleElectiveCourses,
-	"!broadcast":          handleBroadcast,
-	"!الجدول":             handleSchedule,
-	"!القروبات":          handleGroups,
+	"!الأوامر":            (*MessageContext).handleCommands,
+	"!اطرد":               (*MessageContext).handleKick,
+	"!احفظ":               (*MessageContext).handleSaveNote,
+	"!هات":                (*MessageContext).handleGetNote,
+	"!احذف":               (*MessageContext).handleDeleteNote,
+	"!الملاحظات":          (*MessageContext).handleListNotes,
+	"!تبليغ":              (*MessageContext).handleReport,
+	"!منشن الكل":          (*MessageContext).handleMentionAll,
+	"!خطة":                (*MessageContext).handlePlan,
+	"!التقويم الأكاديمي":  (*MessageContext).handleCalendar,
+	"!شروط التحويل":       (*MessageContext).handleTransferConditions,
+	"!الفرق بين التخصصات": (*MessageContext).handleMajorDifferences,
+	"!المسارات":           (*MessageContext).handleTracks,
+	"!المكافأة":           (*MessageContext).handleAllowance,
+	"!المواد الاختيارية":  (*MessageContext).handleElectiveCourses,
+	"!broadcast":          (*MessageContext).handleBroadcast,
+	"!الجدول":             (*MessageContext).handleSchedule,
+	"!القروبات":           (*MessageContext).handleGroups,
 }
 
 func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) {
+	ctx := context.Background()
 	helperLib := helper.BotContext(client, message, gormDB)
 	if message.Info.IsFromMe {
 		return
@@ -55,7 +72,7 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 	}
 
 	ownerJID, _ := types.ParseJID(os.Getenv("OWNER_NUMBER"))
-	owner, err := client.Store.LIDs.GetLIDForPN(context.Background(), ownerJID)
+	owner, err := client.Store.LIDs.GetLIDForPN(ctx, ownerJID)
 	if err != nil {
 		println("Error getting owner number, some commands might not work as expected", err)
 		return
@@ -71,194 +88,211 @@ func Handle(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB) 
 	chat := message.Info.Chat.ToNonAD()
 	author := message.Info.Sender.ToNonAD().String()
 
+	// Create message context
+	mc := &MessageContext{
+		message:         message,
+		client:          client,
+		gormDB:          gormDB,
+		helperLib:       helperLib,
+		chat:            chat,
+		author:          author,
+		botNum:          botNum,
+		quotedMsg:       quotedMsg,
+		quotedMsgText:   quotedMsgText,
+		quotedMsgAuthor: quotedMsgAuthor,
+		owner:           owner.ToNonAD(),
+		msgContentSplit: msgContentSplit,
+		ctx:             ctx,
+	}
+
 	// Try exact command match first
 	if handler, exists := commandMap[msgContent]; exists {
-		handler(message, client, gormDB, helperLib, chat, author, botNum, quotedMsg, quotedMsgText, quotedMsgAuthor, owner.ToNonAD(), msgContentSplit)
+		handler(mc)
 		return
 	}
 
 	// Try prefix match for commands with arguments
 	for cmd, handler := range commandMap {
 		if strings.HasPrefix(msgContent, cmd+" ") {
-			handler(message, client, gormDB, helperLib, chat, author, botNum, quotedMsg, quotedMsgText, quotedMsgAuthor, owner.ToNonAD(), msgContentSplit)
+			handler(mc)
 			return
 		}
 	}
 }
 
-func handleCommands(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	helperLib.ReplyText(cmds)
+func (mc *MessageContext) handleCommands() {
+	mc.helperLib.ReplyText(cmds)
 }
 
-func handleKick(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	if !helperLib.IsUserAdmin(chat, author) {
-		helperLib.ReplyText("حرك حرك تراك مو ادمن")
+func (mc *MessageContext) handleKick() {
+	if !mc.helperLib.IsUserAdmin(mc.chat, mc.author) {
+		mc.helperLib.ReplyText("حرك حرك تراك مو ادمن")
 		return
 	}
-	if !helperLib.IsUserAdmin(chat, botNum) {
-		helperLib.ReplyText("انا مو ادمن")
+	if !mc.helperLib.IsUserAdmin(mc.chat, mc.botNum) {
+		mc.helperLib.ReplyText("انا مو ادمن")
 		return
 	}
-	if quotedMsg == nil {
-		helperLib.ReplyText("الرجاء تحديد العضو المراد طرده بالرد على رسالته")
+	if mc.quotedMsg == nil {
+		mc.helperLib.ReplyText("الرجاء تحديد العضو المراد طرده بالرد على رسالته")
 		return
 	}
-	if quotedMsgAuthor == botNum {
-		helperLib.ReplyText("يواد قم بس، ما رح اطرد نفسي")
+	if mc.quotedMsgAuthor == mc.botNum {
+		mc.helperLib.ReplyText("يواد قم بس، ما رح اطرد نفسي")
 		return
 	}
-	if quotedMsgAuthor == owner.String() {
-		helperLib.ReplyText("يواد قم بس، ما رح اطرد مطوري")
+	if mc.quotedMsgAuthor == mc.owner.String() {
+		mc.helperLib.ReplyText("يواد قم بس، ما رح اطرد مطوري")
 		return
 	}
-	if !helperLib.MemberIsInGroup(chat, quotedMsgAuthor) {
-		helperLib.ReplyText("العضو غير موجود بالمجموعة")
+	if !mc.helperLib.MemberIsInGroup(mc.chat, mc.quotedMsgAuthor) {
+		mc.helperLib.ReplyText("العضو غير موجود بالمجموعة")
 		return
 	}
-	if helperLib.IsUserAdmin(chat, quotedMsgAuthor) {
-		helperLib.ReplyText("مقدر اطرد ادمن")
+	if mc.helperLib.IsUserAdmin(mc.chat, mc.quotedMsgAuthor) {
+		mc.helperLib.ReplyText("مقدر اطرد ادمن")
 		return
 	}
-	usertoKick, _ := types.ParseJID(quotedMsgAuthor)
-	_, _ = client.UpdateGroupParticipants(chat, []types.JID{usertoKick}, whatsmeow.ParticipantChangeRemove)
-	revokeMessage := client.BuildRevoke(chat, usertoKick, message.Message.ExtendedTextMessage.GetContextInfo().GetStanzaID())
-	_, _ = client.SendMessage(context.Background(), chat, revokeMessage)
-	helperLib.ReplyText("تم طرد العضو من المجموعة")
+	usertoKick, _ := types.ParseJID(mc.quotedMsgAuthor)
+	_, _ = mc.client.UpdateGroupParticipants(mc.chat, []types.JID{usertoKick}, whatsmeow.ParticipantChangeRemove)
+	revokeMessage := mc.client.BuildRevoke(mc.chat, usertoKick, mc.message.Message.ExtendedTextMessage.GetContextInfo().GetStanzaID())
+	_, _ = mc.client.SendMessage(mc.ctx, mc.chat, revokeMessage)
+	mc.helperLib.ReplyText("تم طرد العضو من المجموعة")
 }
 
-func handleSaveNote(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	if !helperLib.IsUserAdmin(chat, author) {
-		helperLib.ReplyText("حرك حرك تراك مو ادمن")
+func (mc *MessageContext) handleSaveNote() {
+	if !mc.helperLib.IsUserAdmin(mc.chat, mc.author) {
+		mc.helperLib.ReplyText("حرك حرك تراك مو ادمن")
 		return
 	}
-	if len(msgContentSplit) != 2 || quotedMsg == nil {
-		helperLib.ReplyText("استخدام خاطئ\nقم بالرد على الرسالة المراد حفظها ثم كتابة احفظ مع اسم الملاحظة بدون مسافة\n\nمثال: !احفظ اسم_الملاحظة")
+	if len(mc.msgContentSplit) != 2 || mc.quotedMsg == nil {
+		mc.helperLib.ReplyText("استخدام خاطئ\nقم بالرد على الرسالة المراد حفظها ثم كتابة احفظ مع اسم الملاحظة بدون مسافة\n\nمثال: !احفظ اسم_الملاحظة")
 		return
 	}
-	noteName := msgContentSplit[1]
+	noteName := mc.msgContentSplit[1]
 
 	var finalMsgText string
-	if quotedMsg != nil {
-		if quotedMsg.GetExtendedTextMessage().GetText() != "" {
-			finalMsgText = quotedMsg.GetExtendedTextMessage().GetText()
-		} else if quotedMsg.Conversation != nil {
-			finalMsgText = *quotedMsg.Conversation
+	if mc.quotedMsg != nil {
+		if mc.quotedMsg.GetExtendedTextMessage().GetText() != "" {
+			finalMsgText = mc.quotedMsg.GetExtendedTextMessage().GetText()
+		} else if mc.quotedMsg.Conversation != nil {
+			finalMsgText = *mc.quotedMsg.Conversation
 		}
 	}
 	if finalMsgText != "" {
-		note := models.GroupsNotes{GroupID: chat.String(), NoteName: noteName}
+		note := models.GroupsNotes{GroupID: mc.chat.String(), NoteName: noteName}
 		var existing models.GroupsNotes
-		err := gormDB.Where("group_id = ? AND note_name = ?", chat.String(), noteName).First(&existing).Error
+		err := mc.gormDB.Where("group_id = ? AND note_name = ?", mc.chat.String(), noteName).First(&existing).Error
 		if err == nil {
 			existing.NoteContent = finalMsgText
-			gormDB.Save(&existing)
+			mc.gormDB.Save(&existing)
 		} else {
 			note.NoteContent = finalMsgText
-			gormDB.Create(&note)
+			mc.gormDB.Create(&note)
 		}
-		helperLib.ReplyText("تم حفظ الملاحظة \"" + noteName + "\"")
+		mc.helperLib.ReplyText("تم حفظ الملاحظة \"" + noteName + "\"")
 	} else {
-		helperLib.ReplyText("مقدر احفظ غير النصوص حالياً")
+		mc.helperLib.ReplyText("مقدر احفظ غير النصوص حالياً")
 	}
 }
 
-func handleGetNote(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	if len(msgContentSplit) != 2 {
-		helperLib.ReplyText("استخدام خاطئ\nاكتب هات مع اسم الملاحظة بدون مسافة\n\nمثال: !هات اسم_الملاحظة ")
+func (mc *MessageContext) handleGetNote() {
+	if len(mc.msgContentSplit) != 2 {
+		mc.helperLib.ReplyText("استخدام خاطئ\nاكتب هات مع اسم الملاحظة بدون مسافة\n\nمثال: !هات اسم_الملاحظة ")
 		return
 	}
-	noteName := msgContentSplit[1]
+	noteName := mc.msgContentSplit[1]
 	var note models.GroupsNotes
-	err := gormDB.Where("group_id = ? AND note_name = ?", chat.String(), noteName).First(&note).Error
+	err := mc.gormDB.Where("group_id = ? AND note_name = ?", mc.chat.String(), noteName).First(&note).Error
 	if err != nil {
-		helperLib.ReplyText("لا توجد ملاحظة بأسم " + "\"" + noteName + "\"")
+		mc.helperLib.ReplyText("لا توجد ملاحظة بأسم " + "\"" + noteName + "\"")
 		return
 	}
-	helperLib.ReplyText(note.NoteContent)
+	mc.helperLib.ReplyText(note.NoteContent)
 }
 
-func handleDeleteNote(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	if !helperLib.IsUserAdmin(chat, author) {
-		helperLib.ReplyText("حرك حرك تراك مو ادمن")
+func (mc *MessageContext) handleDeleteNote() {
+	if !mc.helperLib.IsUserAdmin(mc.chat, mc.author) {
+		mc.helperLib.ReplyText("حرك حرك تراك مو ادمن")
 		return
 	}
-	if len(msgContentSplit) != 2 {
-		helperLib.ReplyText("استخدام خاطئ\nاكتب احذف مع اسم الملاحظة بدون مسافة\n\nمثال: !احذف اسم_الملاحظة ")
+	if len(mc.msgContentSplit) != 2 {
+		mc.helperLib.ReplyText("استخدام خاطئ\nاكتب احذف مع اسم الملاحظة بدون مسافة\n\nمثال: !احذف اسم_الملاحظة ")
 		return
 	}
-	noteName := msgContentSplit[1]
+	noteName := mc.msgContentSplit[1]
 	var note models.GroupsNotes
-	err := gormDB.Where("group_id = ? AND note_name = ?", chat.String(), noteName).First(&note).Error
+	err := mc.gormDB.Where("group_id = ? AND note_name = ?", mc.chat.String(), noteName).First(&note).Error
 	if err != nil {
-		helperLib.ReplyText("لا توجد ملاحظة بأسم " + "\"" + noteName + "\"")
+		mc.helperLib.ReplyText("لا توجد ملاحظة بأسم " + "\"" + noteName + "\"")
 		return
 	}
-	gormDB.Delete(&note)
-	helperLib.ReplyText("تم حذف الملاحظة " + "\"" + noteName + "\"")
+	mc.gormDB.Delete(&note)
+	mc.helperLib.ReplyText("تم حذف الملاحظة " + "\"" + noteName + "\"")
 }
 
-func handleListNotes(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
+func (mc *MessageContext) handleListNotes() {
 	var notes []models.GroupsNotes
-	gormDB.Where("group_id = ?", chat.String()).Find(&notes)
+	mc.gormDB.Where("group_id = ?", mc.chat.String()).Find(&notes)
 	if len(notes) == 0 {
-		helperLib.ReplyText("لا توجد ملاحظات محفوظة.")
+		mc.helperLib.ReplyText("لا توجد ملاحظات محفوظة.")
 		return
 	}
 	notesList := "الملاحظات المحفوظة:"
 	for _, n := range notes {
 		notesList += "\n- " + n.NoteName
 	}
-	helperLib.ReplyText(notesList)
+	mc.helperLib.ReplyText(notesList)
 }
 
-func handleReport(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	if quotedMsg == nil {
-		helperLib.ReplyText("الرجاء استخدام الأمر على الرسالة المراد التبليغ عنها")
+func (mc *MessageContext) handleReport() {
+	if mc.quotedMsg == nil {
+		mc.helperLib.ReplyText("الرجاء استخدام الأمر على الرسالة المراد التبليغ عنها")
 		return
 	}
 	adminsNum := ""
 	var adminsJID []string
-	admins := helperLib.GetGroupAdmins(chat)
+	admins := mc.helperLib.GetGroupAdmins(mc.chat)
 	for _, admin := range admins {
-		if admin.PhoneNumber.String() != botNum {
+		if admin.PhoneNumber.String() != mc.botNum {
 			adminsNum += "@" + strings.ReplaceAll(admin.JID.ToNonAD().String(), "@lid", "") + "\n"
 			adminsJID = append(adminsJID, admin.JID.ToNonAD().String())
 		}
 	}
-	helperLib.ReplyAndMention(adminsNum, adminsJID)
-	helperLib.ReplyText("تم الإبلاغ عن الرسالة")
+	mc.helperLib.ReplyAndMention(adminsNum, adminsJID)
+	mc.helperLib.ReplyText("تم الإبلاغ عن الرسالة")
 }
 
-func handleMentionAll(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	if !helperLib.IsUserAdmin(chat, author) {
-		helperLib.ReplyText("حرك حرك تراك مو ادمن")
+func (mc *MessageContext) handleMentionAll() {
+	if !mc.helperLib.IsUserAdmin(mc.chat, mc.author) {
+		mc.helperLib.ReplyText("حرك حرك تراك مو ادمن")
 		return
 	}
 
-	if quotedMsg == nil {
-		helperLib.ReplyText("الرجاء استخدام الأمر على الرسالة المراد منشنة اعضاء المجموعة عليها")
+	if mc.quotedMsg == nil {
+		mc.helperLib.ReplyText("الرجاء استخدام الأمر على الرسالة المراد منشنة اعضاء المجموعة عليها")
 		return
 	}
 	text := "⚠️⚠️⚠️⚠️⚠️ مهم ⚠️⚠️⚠️⚠️⚠️"
 	var usersJID []string
-	users := helperLib.GetGroupMembers(chat)
+	users := mc.helperLib.GetGroupMembers(mc.chat)
 	for _, user := range users {
-		if user.PhoneNumber.String() != botNum {
+		if user.PhoneNumber.String() != mc.botNum {
 			text += "@" + strings.ReplaceAll(user.JID.ToNonAD().String(), "@lid", "") + "\n"
 			usersJID = append(usersJID, user.JID.ToNonAD().String())
 		}
 	}
 	text += "⚠️⚠️⚠️⚠️⚠️ مهم ⚠️⚠️⚠️⚠️⚠️"
-	helperLib.ReplyAndMention(text, usersJID)
+	mc.helperLib.ReplyAndMention(text, usersJID)
 }
 
-func handlePlan(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	if len(msgContentSplit) != 2 {
-		helperLib.ReplyText("استخدام خاطئ\nاكتب خطة مع اسم التخصص\n\nمثال: !خطة IS ")
+func (mc *MessageContext) handlePlan() {
+	if len(mc.msgContentSplit) != 2 {
+		mc.helperLib.ReplyText("استخدام خاطئ\nاكتب خطة مع اسم التخصص\n\nمثال: !خطة IS ")
 		return
 	}
 	path := ""
-	major := strings.ToUpper(msgContentSplit[1])
+	major := strings.ToUpper(mc.msgContentSplit[1])
 	switch major {
 	case "CS":
 		path = "./files/CS_PLAN.pdf"
@@ -268,49 +302,49 @@ func handlePlan(message *events.Message, client *whatsmeow.Client, gormDB *gorm.
 		path = "./files/IS_PLAN.pdf"
 	}
 	if path == "" {
-		helperLib.ReplyText("تخصص غير معروف")
+		mc.helperLib.ReplyText("تخصص غير معروف")
 		return
 	}
-	helperLib.ReplyDocument(path)
+	mc.helperLib.ReplyDocument(path)
 }
 
-func handleCalendar(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	helperLib.ReplyDocument("./files/CALENDAR.pdf")
+func (mc *MessageContext) handleCalendar() {
+	mc.helperLib.ReplyDocument("./files/CALENDAR.pdf")
 }
 
-func handleTransferConditions(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	helperLib.ReplyDocument("./files/TRANSFERRING_CONDITIONS.pdf")
+func (mc *MessageContext) handleTransferConditions() {
+	mc.helperLib.ReplyDocument("./files/TRANSFERRING_CONDITIONS.pdf")
 }
 
-func handleMajorDifferences(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	helperLib.ReplyDocument("./files/DIFFERENCE_BETWEEN_MAJORS.pdf")
+func (mc *MessageContext) handleMajorDifferences() {
+	mc.helperLib.ReplyDocument("./files/DIFFERENCE_BETWEEN_MAJORS.pdf")
 }
 
-func handleTracks(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	helperLib.ReplyDocument("./files/FCIT_TRACKS.pdf")
+func (mc *MessageContext) handleTracks() {
+	mc.helperLib.ReplyDocument("./files/FCIT_TRACKS.pdf")
 }
 
-func handleAllowance(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	helperLib.Allowance()
+func (mc *MessageContext) handleAllowance() {
+	mc.helperLib.Allowance()
 }
 
-func handleElectiveCourses(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	helperLib.ReplyDocument("./files/ELECTIVE_COURSES.pdf")
+func (mc *MessageContext) handleElectiveCourses() {
+	mc.helperLib.ReplyDocument("./files/ELECTIVE_COURSES.pdf")
 }
 
-func handleBroadcast(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	if author == owner.String() {
-		groups, _ := client.GetJoinedGroups()
+func (mc *MessageContext) handleBroadcast() {
+	if mc.author == mc.owner.String() {
+		groups, _ := mc.client.GetJoinedGroups(mc.ctx)
 		for i, group := range groups {
-			_, _ = client.SendMessage(context.Background(), group.JID.ToNonAD(), &waE2E.Message{Conversation: proto.String(quotedMsgText + strconv.Itoa(i))})
+			_, _ = mc.client.SendMessage(mc.ctx, group.JID.ToNonAD(), &waE2E.Message{Conversation: proto.String(mc.quotedMsgText + strconv.Itoa(i))})
 		}
 	}
 }
 
-func handleSchedule(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	helperLib.ReplyText("https://betterkau.com")
+func (mc *MessageContext) handleSchedule() {
+	mc.helperLib.ReplyText("https://betterkau.com")
 }
 
-func handleGroups(message *events.Message, client *whatsmeow.Client, gormDB *gorm.DB, helperLib *helper.Bot, chat types.JID, author, botNum string, quotedMsg *waE2E.Message, quotedMsgText, quotedMsgAuthor string, owner types.JID, msgContentSplit []string) {
-	helperLib.ReplyText("https://fcit-groups.abdaziz.dev")
+func (mc *MessageContext) handleGroups() {
+	mc.helperLib.ReplyText("https://fcit-groups.abdaziz.dev")
 }
