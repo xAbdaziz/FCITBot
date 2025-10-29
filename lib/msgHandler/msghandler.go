@@ -126,11 +126,11 @@ func (mc *MessageContext) handleCommands() {
 
 func (mc *MessageContext) handleKick() {
 	if !mc.helperLib.IsUserAdmin(mc.chat, mc.author) {
-		mc.helperLib.ReplyText("حرك حرك تراك مو ادمن")
+		mc.helperLib.ReplyText("عذراً، هذا الأمر متاح للمشرفين فقط")
 		return
 	}
 	if !mc.helperLib.IsUserAdmin(mc.chat, mc.botNum) {
-		mc.helperLib.ReplyText("انا مو ادمن")
+		mc.helperLib.ReplyText("عذراً، لا أملك صلاحيات المشرف في هذه المجموعة")
 		return
 	}
 	if mc.quotedMsg == nil {
@@ -138,11 +138,11 @@ func (mc *MessageContext) handleKick() {
 		return
 	}
 	if mc.quotedMsgAuthor == mc.botNum {
-		mc.helperLib.ReplyText("يواد قم بس، ما رح اطرد نفسي")
+		mc.helperLib.ReplyText("لا يمكنني طرد نفسي من المجموعة")
 		return
 	}
 	if mc.quotedMsgAuthor == mc.owner.String() {
-		mc.helperLib.ReplyText("يواد قم بس، ما رح اطرد مطوري")
+		mc.helperLib.ReplyText("عذراً، لا يمكن طرد مطور البوت")
 		return
 	}
 	if !mc.helperLib.MemberIsInGroup(mc.chat, mc.quotedMsgAuthor) {
@@ -150,7 +150,7 @@ func (mc *MessageContext) handleKick() {
 		return
 	}
 	if mc.helperLib.IsUserAdmin(mc.chat, mc.quotedMsgAuthor) {
-		mc.helperLib.ReplyText("مقدر اطرد ادمن")
+		mc.helperLib.ReplyText("عذراً، لا يمكن طرد المشرفين")
 		return
 	}
 	usertoKick, _ := types.ParseJID(mc.quotedMsgAuthor)
@@ -162,7 +162,7 @@ func (mc *MessageContext) handleKick() {
 
 func (mc *MessageContext) handleSaveNote() {
 	if !mc.helperLib.IsUserAdmin(mc.chat, mc.author) {
-		mc.helperLib.ReplyText("حرك حرك تراك مو ادمن")
+		mc.helperLib.ReplyText("عذراً، هذا الأمر متاح للمشرفين فقط")
 		return
 	}
 	if len(mc.msgContentSplit) != 2 || mc.quotedMsg == nil {
@@ -213,7 +213,7 @@ func (mc *MessageContext) handleGetNote() {
 
 func (mc *MessageContext) handleDeleteNote() {
 	if !mc.helperLib.IsUserAdmin(mc.chat, mc.author) {
-		mc.helperLib.ReplyText("حرك حرك تراك مو ادمن")
+		mc.helperLib.ReplyText("عذراً، هذا الأمر متاح للمشرفين فقط")
 		return
 	}
 	if len(mc.msgContentSplit) != 2 {
@@ -265,7 +265,7 @@ func (mc *MessageContext) handleReport() {
 
 func (mc *MessageContext) handleMentionAll() {
 	if !mc.helperLib.IsUserAdmin(mc.chat, mc.author) {
-		mc.helperLib.ReplyText("حرك حرك تراك مو ادمن")
+		mc.helperLib.ReplyText("عذراً، هذا الأمر متاح للمشرفين فقط")
 		return
 	}
 
@@ -273,7 +273,7 @@ func (mc *MessageContext) handleMentionAll() {
 		mc.helperLib.ReplyText("الرجاء استخدام الأمر على الرسالة المراد منشنة اعضاء المجموعة عليها")
 		return
 	}
-	text := "⚠️⚠️⚠️⚠️⚠️ مهم ⚠️⚠️⚠️⚠️⚠️"
+	text := "⚠️ إعلان مهم ⚠️\n\n"
 	var usersJID []string
 	users := mc.helperLib.GetGroupMembers(mc.chat)
 	for _, user := range users {
@@ -282,7 +282,7 @@ func (mc *MessageContext) handleMentionAll() {
 			usersJID = append(usersJID, user.JID.ToNonAD().String())
 		}
 	}
-	text += "⚠️⚠️⚠️⚠️⚠️ مهم ⚠️⚠️⚠️⚠️⚠️"
+	text += "\n⚠️ يرجى الاطلاع على الرسالة أعلاه ⚠️"
 	mc.helperLib.ReplyAndMention(text, usersJID)
 }
 

@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -194,10 +193,6 @@ func diffBetweenDates(date string) (counter string) {
 		minutesName := "دقيقة"
 		secondsName := "ثانية"
 
-		if days < 1 {
-			return "no allowance"
-		}
-
 		if days <= 10 {
 			daysName = "أيام"
 		}
@@ -239,32 +234,6 @@ func (botContext *Bot) Allowance() {
 	}
 
 	diff := diffBetweenDates(allowance.Date.Format(time.RFC3339))
-
-	if diff == "no allowance" {
-		replies := []string{
-			"حرك يا فقير",
-			"قطعناها عنك، روح دور لك على شغلة",
-			"معدلك تعبان ما فيه فلوس",
-			"شفلك حياة",
-			"broke guy",
-			"القم يا فقير",
-			"Go work at McDonald's, broke guy",
-			"If poverty gave out degrees, you'd have a PhD",
-			"عطنا رقم بابا عشان نعطيك مصروف",
-			"McDonald's is hiring bro",
-			"حمل إحسان وشوف قسم التبرعات",
-			"غداً تُرزقون يا معشر المحتاجين",
-			"اليوم تشحت، بكرة تصرف",
-			"You're 24 hours away from being slightly less pathetic",
-			"Put the fries in the bag lil bro",
-			"شكله خلص حبر الطابعة وما عندك حقه",
-			"Bro so broke he can't afford calculator batteries 💀💀",
-		}
-		rand.Seed(time.Now().UnixNano())
-		reply := replies[rand.Intn(len(replies))]
-		botContext.ReplyText(reply)
-		return
-	}
 
 	if diff != "" {
 		botContext.ReplyText("يتبقى على إيداع المكافأة:\n" + diff)
