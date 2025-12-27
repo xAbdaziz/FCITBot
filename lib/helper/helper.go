@@ -1,11 +1,8 @@
 package helper
 
 import (
-	"FCITBot/models"
-
 	"context"
 	"fmt"
-	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -170,84 +167,63 @@ func (botContext *Bot) MemberIsInGroup(chat types.JID, user string) bool {
 	return false
 }
 
-func diffBetweenDates(date string) (counter string) {
-	dateNowUnix := time.Now().UnixMilli()
-	dateThen, _ := time.Parse(time.RFC3339, date)
-	dateThenUnix := dateThen.UnixMilli()
-	if (dateThenUnix - dateNowUnix) >= 0 {
-		delta := math.Abs(float64(dateThenUnix-dateNowUnix)) / 1000
+func (botContext *Bot) Allowance() {
+	saudiTZ := time.FixedZone("UTC+3", 3*60*60)
+	now := time.Now().In(saudiTZ)
 
-		days := math.Floor(delta / 86400)
-		delta -= days * 86400
+	allowanceDate := time.Date(now.Year(), now.Month(), 27, 2, 0, 0, 0, saudiTZ)
+	allowanceDate = adjustForWeekend(allowanceDate)
 
-		hours := math.Mod(math.Floor(delta/3600), 24)
-		delta -= hours * 3600
-
-		minutes := math.Mod(math.Floor(delta/60), 60)
-		delta -= minutes * 60
-
-		seconds := math.Floor(math.Mod(delta, 60))
-
-		daysName := "يوم"
-		hoursName := "ساعة"
-		minutesName := "دقيقة"
-		secondsName := "ثانية"
-
-		if days <= 10 {
-			daysName = "أيام"
-		}
-		if hours <= 10 {
-			hoursName = "ساعات"
-		}
-		if minutes <= 10 {
-			minutesName = "دقائق"
-		}
-		if seconds <= 10 {
-			secondsName = "ثواني"
-		}
-
-		counter := fmt.Sprintf("%.0f %s %.0f %s %.0f %s %.0f %s", days, daysName, hours, hoursName, minutes, minutesName, seconds, secondsName)
-
-		return counter
-	} else {
-		return ""
+	// If we're past this month's allowance date, calculate next month's
+	if now.After(allowanceDate) {
+		allowanceDate = time.Date(now.Year(), now.Month()+1, 27, 2, 0, 0, 0, saudiTZ)
+		allowanceDate = adjustForWeekend(allowanceDate)
 	}
+
+	diff := allowanceDate.Sub(now)
+
+	if diff <= 0 {
+		botContext.ReplyText("موعد إيداع المكافأة اليوم!")
+		return
+	}
+
+	days := int(diff.Hours() / 24)
+	hours := int(diff.Hours()) % 24
+	minutes := int(diff.Minutes()) % 60
+	seconds := int(diff.Seconds()) % 60
+
+	daysName := "يوم"
+	hoursName := "ساعة"
+	minutesName := "دقيقة"
+	secondsName := "ثانية"
+
+	if days >= 3 && days <= 10 {
+		daysName = "أيام"
+	}
+	if hours >= 3 && hours <= 10 {
+		hoursName = "ساعات"
+	}
+	if minutes >= 3 && minutes <= 10 {
+		minutesName = "دقائق"
+	}
+	if seconds >= 3 && seconds <= 10 {
+		secondsName = "ثواني"
+	}
+
+	countdown := fmt.Sprintf("%d %s %d %s %d %s %d %s", days, daysName, hours, hoursName, minutes, minutesName, seconds, secondsName)
+	botContext.ReplyText("يتبقى على إيداع المكافأة:\n" + countdown)
 }
 
-func (botContext *Bot) Allowance() {
-	var allowance models.Allowance
-	result := botContext.gormDB.First(&allowance)
-
-	if result.Error != nil {
-		now := time.Now()
-		allowanceDate := time.Date(now.Year(), now.Month(), 27, 2, 0, 0, 0, time.FixedZone("UTC+3", 3*60*60))
-		allowance = models.Allowance{Date: allowanceDate}
-		botContext.gormDB.Create(&allowance)
-	}
-
-	if allowance.Date.Weekday() == time.Saturday {
-		// Move to Sunday
-		allowance.Date = allowance.Date.AddDate(0, 0, 1)
-	} else if allowance.Date.Weekday() == time.Friday {
-		// Move to Thursday
-		allowance.Date = allowance.Date.AddDate(0, 0, -1)
-	}
-
-	diff := diffBetweenDates(allowance.Date.Format(time.RFC3339))
-
-	if diff != "" {
-		botContext.ReplyText("يتبقى على إيداع المكافأة:\n" + diff)
-	} else {
-		// Update to next month
-		// Add one month to the current date
-		nextMonth := allowance.Date.AddDate(0, 1, 0)
-		// Reset to day 27 of next month
-		nextAllowanceDate := time.Date(nextMonth.Year(), nextMonth.Month(), 27, 2, 0, 0, 0, time.FixedZone("UTC+3", 3*60*60))
-
-		botContext.gormDB.Model(&models.Allowance{}).Where("1=1").Update("date", nextAllowanceDate)
-
-		// Recursive call to show the next allowance date
-		allowance.Date = nextAllowanceDate
-		botContext.Allowance()
+// adjustForWeekend moves the date to avoid weekends (Friday/Saturday in Saudi Arabia)
+func adjustForWeekend(date time.Time) time.Time {
+	switch date.Weekday() {
+	case time.Friday:
+		// Move to Thursday (day before weekend)
+		return date.AddDate(0, 0, -1)
+	case time.Saturday:
+		// Move to Sunday (day after weekend)
+		return date.AddDate(0, 0, 1)
+	default:
+		return date
 	}
 }

@@ -108,7 +108,7 @@ func main() {
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 
 	// Migrate models
-	gormDB.AutoMigrate(&models.GroupsNotes{}, &models.Allowance{})
+	gormDB.AutoMigrate(&models.GroupsNotes{})
 
 	eventHandler := registerHandler(client, gormDB)
 	client.AddEventHandler(eventHandler)
