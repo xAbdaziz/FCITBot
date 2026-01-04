@@ -342,7 +342,7 @@ func (mc *MessageContext) handleBroadcast() {
 }
 
 func (mc *MessageContext) handleSchedule() {
-	mc.helperLib.ReplyText("https://betterkau.com")
+	mc.helperLib.ReplyText("https://kauindex.com")
 }
 
 func (mc *MessageContext) handleGroups() {
