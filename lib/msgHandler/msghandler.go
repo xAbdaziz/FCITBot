@@ -154,7 +154,7 @@ func (mc *MessageContext) handleKick() {
 		return
 	}
 	usertoKick, _ := types.ParseJID(mc.quotedMsgAuthor)
-	_, _ = mc.client.UpdateGroupParticipants(mc.chat, []types.JID{usertoKick}, whatsmeow.ParticipantChangeRemove)
+	_, _ = mc.client.UpdateGroupParticipants(mc.ctx, mc.chat, []types.JID{usertoKick}, whatsmeow.ParticipantChangeRemove)
 	revokeMessage := mc.client.BuildRevoke(mc.chat, usertoKick, mc.message.Message.ExtendedTextMessage.GetContextInfo().GetStanzaID())
 	_, _ = mc.client.SendMessage(mc.ctx, mc.chat, revokeMessage)
 	mc.helperLib.ReplyText("تم طرد العضو من المجموعة")

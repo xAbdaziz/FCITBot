@@ -18,6 +18,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var ctx = context.Background()
+
 type Bot struct {
 	Client *whatsmeow.Client
 	Msg    *events.Message
@@ -54,12 +56,12 @@ func (botContext *Bot) Reply(msg *waE2E.Message) {
 	chatId := botContext.Msg.Info.Chat.ToNonAD()
 	msgId := botContext.Msg.Info.ID
 	author := botContext.Msg.Info.Sender.ToNonAD()
-	_, err := botContext.Client.SendMessage(context.Background(), chatId, msg)
+	_, err := botContext.Client.SendMessage(ctx, chatId, msg)
 	if err != nil {
 		println(err)
 		return
 	}
-	_ = botContext.Client.MarkRead([]types.MessageID{msgId}, time.Now(), chatId, author)
+	_ = botContext.Client.MarkRead(ctx, []types.MessageID{msgId}, time.Now(), chatId, author)
 }
 
 func (botContext *Bot) ReplyText(reply string) {
@@ -102,7 +104,7 @@ func (botContext *Bot) ReplyDocument(file string) {
 		println(err)
 		return
 	}
-	resp, err := botContext.Client.Upload(context.Background(), content, whatsmeow.MediaDocument)
+	resp, err := botContext.Client.Upload(ctx, content, whatsmeow.MediaDocument)
 	if err != nil {
 		println(err)
 		return
@@ -130,7 +132,7 @@ func (botContext *Bot) ReplyDocument(file string) {
 }
 
 func (botContext *Bot) GetGroupMembers(chat types.JID) []types.GroupParticipant {
-	groupInfo, _ := botContext.Client.GetGroupInfo(chat)
+	groupInfo, _ := botContext.Client.GetGroupInfo(ctx, chat)
 	return groupInfo.Participants
 }
 
@@ -148,7 +150,7 @@ func (botContext *Bot) GetGroupAdmins(chat types.JID) []types.GroupParticipant {
 func (botContext *Bot) IsUserAdmin(chat types.JID, user string) bool {
 	admins := botContext.GetGroupAdmins(chat)
 	ownerJID, _ := types.ParseJID(os.Getenv("OWNER_NUMBER"))
-	owner, _ := botContext.Client.Store.LIDs.GetLIDForPN(context.Background(), ownerJID)
+	owner, _ := botContext.Client.Store.LIDs.GetLIDForPN(ctx, ownerJID)
 	for _, admin := range admins {
 		if admin.JID.String() == user || owner.String() == user {
 			return true
