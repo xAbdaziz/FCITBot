@@ -25,7 +25,6 @@ WORKDIR /app
 COPY --from=builder /build/fcitbot .
 
 # Copy any necessary files
-COPY cmds.txt /app/cmds.txt
 COPY files/ /app/files/
 
 # Create data directory for database persistence

@@ -1,8 +1,4 @@
-# FCITBot
-
-> **Note**: This project was created during my early days at FCIT (2021-2022) and may not follow the cleanest code practices or best software engineering principles. It serves as a functional WhatsApp bot but could benefit from refactoring and improvements.
-
-A WhatsApp bot designed for FCIT (Faculty of Computing and Information Technology) students and groups. The bot provides various academic services, note management, and group administration features.
+﻿# FCITBot
 
 ## Features
 
@@ -48,9 +44,9 @@ All commands start with `!` (exclamation mark):
 
 ## Prerequisites
 
-- Go 1.23 or higher
-- PostgreSQL database
-- WhatsApp account for the bot
+- Go 1.25 or higher
+- A WhatsApp account for the bot
+- *(Optional)* PostgreSQL database — SQLite is used by default
 
 ## Installation
 
@@ -67,28 +63,19 @@ cd FCITBot
 go mod download
 ```
 
-3. Set up PostgreSQL databases:
-```sql
-CREATE DATABASE wadb;
-CREATE DATABASE groupnotes;
-CREATE DATABASE fcitbotmisc;
-
--- Connect to fcitbotmisc and create tables:
-\c fcitbotmisc;
-CREATE TABLE allowance (month INT, year INT);
-CREATE TABLE vacations (name VARCHAR(255), date TIMESTAMP, duration VARCHAR(255));
-```
-
-4. Configure environment:
+3. Configure environment:
 ```bash
 cp config.env.example config.env
-# Edit config.env with your database URL and WhatsApp numbers
+# Edit config.env with your WhatsApp owner number
+# Optionally set DB_URL to use PostgreSQL instead of SQLite
 ```
 
-5. Run the bot:
+4. Run the bot:
 ```bash
 go run main.go
 ```
+
+On first run, a QR code will be printed to the terminal — scan it with WhatsApp to log in. Session data is persisted locally so subsequent runs connect automatically.
 
 ### Quick Deploy (Production)
 
@@ -100,57 +87,90 @@ go build -o fcitbot main.go
 ./fcitbot
 ```
 
-### Using Docker
+### Using Docker Compose (Recommended)
+
+The easiest way to run the bot in production. On first run, enable `tty` and `stdin_open` in `docker-compose.yml` to scan the QR code, then disable them again.
+
+```bash
+# Pull and start
+docker compose up -d
+```
+
+The `docker-compose.yml` uses the pre-built image from `ghcr.io/xabdaziz/fcitbot:latest` and mounts a local `./fcitbot-data` volume for persistent session and database storage.
+
+### Using Docker (Manual)
 
 ```bash
 # Build and run
 docker build -t fcitbot .
 docker run -d --name fcitbot \
-  -e DB_URL="postgres://user:pass@host:5432/" \
+  -v ./fcitbot-data:/app/data \
   -e OWNER_NUMBER="966591234567@s.whatsapp.net" \
-  -e BOT_NUMBER="966551234567@s.whatsapp.net" \
   fcitbot
 ```
 
 ## Configuration
 
-The bot requires the following environment variables in [`config.env`](config.env):
+Copy [`config.env.example`](config.env.example) to `config.env` and set the following:
 
-- `DB_URL`: PostgreSQL connection string
-- `OWNER_NUMBER`: WhatsApp number of the bot owner (with full format)
-- `BOT_NUMBER`: WhatsApp number of the bot account (with full format)
+| Variable | Required | Description |
+|---|---|---|
+| `OWNER_NUMBER` | ✅ Yes | WhatsApp JID of the bot owner (e.g. `966591234567@s.whatsapp.net`) |
+| `DB_URL` | ❌ Optional | PostgreSQL connection string. If omitted, SQLite is used. |
 
-## Database Schema
+## Database
 
-The bot uses three PostgreSQL databases:
-- `wadb`: WhatsApp session storage
-- `groupnotes`: Group-specific notes storage
-- `fcitbotmisc`: Miscellaneous data (allowance tracking, vacations)
+The bot supports two database backends, selected automatically based on whether `DB_URL` is set:
+
+- **SQLite** *(default)*: No setup needed. Data is stored in `data/whatsmeow.db` (WhatsApp session) and `data/fcitbot.db` (bot data).
+- **PostgreSQL**: Set `DB_URL` to a valid connection string (e.g. `postgres://user:pass@host:5432/dbname`).
+
+Database schema is managed automatically via GORM's `AutoMigrate` — no manual SQL setup required.
 
 ## File Structure
 
 ```
-├── main.go                 # Main application entry point
-├── config.env.example      # Environment configuration template
-├── cmds.txt               # Available commands list
-├── Dockerfile             # Docker configuration
-├── docker-compose.yml     # Docker Compose configuration
-├── files/                 # PDF documents for academic resources
+├── main.go                    # Application entry point; connects to WhatsApp and dispatches events
+├── config.env.example         # Environment configuration template
+├── Dockerfile                 # Docker build configuration
+├── docker-compose.yml         # Docker Compose configuration (uses pre-built image)
+├── go.mod / go.sum            # Go module files
+├── models/
+│   └── groupsnotes.go         # GORM model for group notes
+├── files/                     # PDF documents served by the bot
+│   ├── CALENDAR.pdf
 │   ├── CS_PLAN.pdf
 │   ├── IT_PLAN.pdf
 │   ├── IS_PLAN.pdf
-│   └── ...
+│   ├── DIFFERENCE_BETWEEN_MAJORS.pdf
+│   ├── ELECTIVE_COURSES.pdf
+│   ├── FCIT_TRACKS.pdf
+│   └── TRANSFERRING_CONDITIONS.pdf
 └── lib/
     ├── helper/
-    │   └── helper.go      # Utility functions
+    │   └── helper.go          # Utility / helper functions (Bot struct, send helpers)
     └── msgHandler/
-        └── msghandler.go  # Message processing logic
+        ├── msghandler.go      # Core handler: command registry, routing, MessageContext
+        ├── cmd_allowance.go
+        ├── cmd_broadcast.go
+        ├── cmd_calendar.go
+        ├── cmd_elective_courses.go
+        ├── cmd_groups.go
+        ├── cmd_kick.go
+        ├── cmd_major_differences.go
+        ├── cmd_mention_all.go
+        ├── cmd_notes.go
+        ├── cmd_plan.go
+        ├── cmd_report.go
+        ├── cmd_schedule.go
+        ├── cmd_tracks.go
+        └── cmd_transfer.go
 ```
 
 ## Usage
 
 1. Add the bot to your WhatsApp group
-2. The bot will automatically create a notes table for the group
+2. The bot will automatically set up its database tables on startup
 3. Use `!الأوامر` to see all available commands
 4. Admins can use administrative commands like `!اطرد` and `!منشن الكل`
 
@@ -158,6 +178,26 @@ The bot uses three PostgreSQL databases:
 
 ### Adding New Commands
 
-1. Add the command logic in [`lib/msgHandler/msghandler.go`](lib/msgHandler/msghandler.go)
-2. Update the commands list in [`cmds.txt`](cmds.txt)
-3. Add any required helper functions in [`lib/helper/helper.go`](lib/helper/helper.go)
+Commands are registered using the `RegisterCommand` function in [`lib/msgHandler/msghandler.go`](lib/msgHandler/msghandler.go). Each command is a self-contained `cmd_*.go` file.
+
+1. Create a new file `lib/msgHandler/cmd_mycommand.go`
+2. Register your command in an `init()` function:
+
+```go
+package msgHandler
+
+func init() {
+    RegisterCommand(Command{
+        Name:        "!mycommand",
+        Description: "Description of my command",
+        Handler:     handleMyCommand,
+    })
+}
+
+func handleMyCommand(mc *MessageContext) {
+    mc.HelperLib.ReplyText("Hello!")
+}
+```
+
+3. Add any required PDF files to the [`files/`](files/) directory
+4. Add any required helper functions to [`lib/helper/helper.go`](lib/helper/helper.go)
