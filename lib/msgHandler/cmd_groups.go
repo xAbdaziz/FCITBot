@@ -9,5 +9,5 @@ func init() {
 }
 
 func (mc *MessageContext) handleGroups() {
-	mc.HelperLib.ReplyText("https://fcit-groups.abdaziz.dev")
+	mc.HelperLib.ReplyText("https://groups.kstacks.org")
 }
