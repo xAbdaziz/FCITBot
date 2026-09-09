@@ -1,21 +1,21 @@
 module FCITBot
 
-go 1.25.0
+go 1.26.0
 
 require (
-	github.com/jackc/pgx/v5 v5.9.2
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/joho/godotenv v1.5.1
 	github.com/mdp/qrterminal/v3 v3.2.1
-	go.mau.fi/whatsmeow v0.0.0-20260506122147-6a7198d94d26
-	google.golang.org/protobuf v1.36.11
+	go.mau.fi/whatsmeow v0.0.0-20260908082135-57796d3d6b41
+	google.golang.org/protobuf v1.36.12
 )
 
-require github.com/coder/websocket v1.8.14 // indirect
+require github.com/coder/websocket v1.8.15 // indirect
 
 require (
 	github.com/beeper/argo-go v1.1.2 // indirect
-	github.com/elliotchance/orderedmap/v3 v3.1.0 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.33 // indirect
+	github.com/elliotchance/orderedmap/v3 v3.1.1 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.37 // indirect
 	gorm.io/driver/sqlite v1.6.0
 )
 
@@ -27,21 +27,21 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.22 // indirect
-	github.com/mattn/go-sqlite3 v1.14.44
-	github.com/petermattis/goid v0.0.0-20260330135022-df67b199bc81 // indirect
+	github.com/mattn/go-colorable v0.1.15 // indirect
+	github.com/mattn/go-isatty v0.0.24 // indirect
+	github.com/mattn/go-sqlite3 v1.14.52
+	github.com/petermattis/goid v0.0.0-20260816044145-ed329add6b1b // indirect
 	github.com/rs/zerolog v1.35.1 // indirect
-	go.mau.fi/libsignal v0.2.1 // indirect
-	go.mau.fi/util v0.9.8 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
-	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
-	golang.org/x/net v0.54.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
-	golang.org/x/term v0.43.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
-	gorm.io/driver/postgres v1.6.0
-	gorm.io/gorm v1.31.1
+	go.mau.fi/libsignal v0.2.2 // indirect
+	go.mau.fi/util v0.10.1-0.20260820140024-eb612d936fde // indirect
+	golang.org/x/crypto v0.57.0 // indirect
+	golang.org/x/exp v0.0.0-20260813180055-c1d0aacb2297 // indirect
+	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/term v0.46.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
+	gorm.io/driver/postgres v1.6.2
+	gorm.io/gorm v1.31.2
 	rsc.io/qr v0.2.0 // indirect
 )
